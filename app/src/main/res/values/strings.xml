@@ -56,4 +56,9 @@
         <item>Pose Landmarker Lite</item>
         <item>Pose Landmarker Heavy</item>
     </string-array>
+    <string-array name="exercise_spinner_titles">
+        <item>Biceps</item>
+        <item>Squats</item>
+        <item>Lateral Raise</item>
+    </string-array>
 </resources>
