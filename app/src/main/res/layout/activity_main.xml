@@ -1,37 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout 
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:orientation="vertical"
+  android:padding="16dp"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+
+  <!-- Existing camera preview/NavHostFragment goes here -->
+  <FrameLayout
+    android:id="@+id/fragment_container"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@android:color/transparent">
+    android:layout_height="0dp"
+    android:layout_weight="1"/>
 
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+  <!-- RL + RS UI -->
+  <TextView
+    android:id="@+id/tvDifficulty"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Difficulty: 1"/>
 
-        <androidx.fragment.app.FragmentContainerView
-            android:id="@+id/fragment_container"
-            android:name="androidx.navigation.fragment.NavHostFragment"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_marginTop="?android:attr/actionBarSize"
-            android:background="@android:color/transparent"
-            android:keepScreenOn="true"
-            app:defaultNavHost="true"
-            app:navGraph="@navigation/nav_graph"
-            tools:context=".MainActivity" />
+  <Button
+    android:id="@+id/btnSimulateRep"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Simulate Rep"/>
 
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:layout_alignParentTop="true"
-            android:background="@color/toolbar_background">
+  <RatingBar
+    android:id="@+id/ratingBar"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:numStars="5"
+    android:stepSize="1"/>
 
-        </androidx.appcompat.widget.Toolbar>
+  <Button
+    android:id="@+id/btnRate"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Rate Workout"/>
 
-    </RelativeLayout>
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+  <TextView
+    android:id="@+id/tvRecs"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Recommendations"/>
+</LinearLayout>

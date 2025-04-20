@@ -1,47 +1,69 @@
 package com.google.mediapipe.examples.poselandmarker
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.google.mediapipe.examples.poselandmarker.data.*
+import com.google.mediapipe.examples.poselandmarker.rl.QLearningAgent
+import com.google.mediapipe.examples.poselandmarker.recommend.ItemBasedRecommender
+import com.google.gson.Gson
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
-enum class ExerciseType {
-    BICEP,
-    SQUAT,
-    LATERAL_RAISE,
-    LUNGES,
-    SHOULDER_PRESS
-}
+class MainViewModel(app: Application) : AndroidViewModel(app) {
+  private val db         = AppDatabase.getInstance(app)
+  private val rlAgent    = QLearningAgent(app)
+  private val recommender= ItemBasedRecommender(db.ratingDao())
+  private val gson       = Gson()
 
+  private val _difficulty      = MutableStateFlow(1)
+  val difficulty: StateFlow<Int> = _difficulty
 
-/**
- * ViewModel stores pose landmarker settings & chosen exercise
- */
-class MainViewModel : ViewModel() {
+  private val _recommendations = MutableStateFlow<List<String>>(emptyList())
+  val recommendations: StateFlow<List<String>> = _recommendations
 
-    private var _model = PoseLandmarkerHelper.MODEL_POSE_LANDMARKER_FULL
-    private var _delegate: Int = PoseLandmarkerHelper.DELEGATE_CPU
-    private var _minPoseDetectionConfidence: Float =
-        PoseLandmarkerHelper.DEFAULT_POSE_DETECTION_CONFIDENCE
-    private var _minPoseTrackingConfidence: Float =
-        PoseLandmarkerHelper.DEFAULT_POSE_TRACKING_CONFIDENCE
-    private var _minPosePresenceConfidence: Float =
-        PoseLandmarkerHelper.DEFAULT_POSE_PRESENCE_CONFIDENCE
+  companion object {
+    private const val BATCH = 5
+    private const val TARGET_ANGLE = 45
+  }
 
-    // Default to BICEP
-    private var _exerciseType: ExerciseType = ExerciseType.BICEP
-
-    val currentModel: Int get() = _model
-    val currentDelegate: Int get() = _delegate
-    val currentMinPoseDetectionConfidence: Float get() = _minPoseDetectionConfidence
-    val currentMinPoseTrackingConfidence: Float get() = _minPoseTrackingConfidence
-    val currentMinPosePresenceConfidence: Float get() = _minPosePresenceConfidence
-    val currentExerciseType: ExerciseType get() = _exerciseType
-
-    fun setModel(model: Int) { _model = model }
-    fun setDelegate(delegate: Int) { _delegate = delegate }
-    fun setMinPoseDetectionConfidence(confidence: Float) { _minPoseDetectionConfidence = confidence }
-    fun setMinPoseTrackingConfidence(confidence: Float) { _minPoseTrackingConfidence = confidence }
-    fun setMinPosePresenceConfidence(confidence: Float) { _minPosePresenceConfidence = confidence }
-
-    fun setExerciseType(exerciseType: ExerciseType) {
-        _exerciseType = exerciseType
+  /** Call this on each detected rep */
+  fun recordRep(angle: Float, errors: List<String>) {
+    viewModelScope.launch {
+      db.sampleDao().insert(
+        SampleEntity(
+          timestamp = System.currentTimeMillis(),
+          reps = 1,
+          avgAngle = angle,
+          errorsJson = gson.toJson(errors)
+        )
+      )
+      updateRL()
     }
+  }
+
+  private fun updateRL() = viewModelScope.launch {
+    val recents = db.sampleDao().getRecent(BATCH)
+    if (recents.size < BATCH) return@launch
+
+    val avg = recents.map { it.avgAngle }.average().roundToInt()
+    val errs= recents.sumOf { gson.fromJson(it.errorsJson, Array<String>::class.java).size }
+    val state = com.google.mediapipe.examples.poselandmarker.rl.State(avg, errs)
+    val action= rlAgent.selectAction(state)
+    _difficulty.value = (_difficulty.value + action).coerceAtLeast(1)
+
+    val reward = if (abs(avg - TARGET_ANGLE) < 5 && errs == 0) 1f else -1f
+    rlAgent.update(state, action, reward, state)
+  }
+
+  /** Call when user rates a workout */
+  fun submitRating(workoutId: String, rating: Int) {
+    viewModelScope.launch {
+      db.ratingDao().insert(RatingEntity(workoutId = workoutId, rating = rating))
+      _recommendations.value = recommender.recommend()
+    }
+  }
 }
