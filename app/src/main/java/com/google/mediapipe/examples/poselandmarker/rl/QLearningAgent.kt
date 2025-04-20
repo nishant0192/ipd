@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -24,14 +25,32 @@ class QLearningAgent(private val ctx: Context) {
   private val actions = listOf(-1, 0, +1)
 
   init { load() }
+  
   private fun load() = runBlocking {
-    ctx.dataStore.data.first()[Q_KEY]?.let {
-      val type = object: TypeToken<QTable>(){}.type
-      qTable = gson.fromJson(it, type)
+    try {
+      ctx.dataStore.data.first()[Q_KEY]?.let {
+        val type = object: TypeToken<QTable>(){}.type
+        qTable = gson.fromJson(it, type)
+      }
+    } catch (e: JsonSyntaxException) {
+      // Handle invalid JSON format - just use empty qTable
+      qTable = mutableMapOf()
+      // Clear the corrupt data from datastore
+      ctx.dataStore.edit { prefs ->
+        prefs.remove(Q_KEY)
+      }
+    } catch (e: Exception) {
+      // Handle any other exceptions
+      qTable = mutableMapOf()
     }
   }
+  
   private fun save() = runBlocking {
-    ctx.dataStore.edit { it[Q_KEY] = gson.toJson(qTable) }
+    try {
+      ctx.dataStore.edit { it[Q_KEY] = gson.toJson(qTable) }
+    } catch (e: Exception) {
+      // Silently fail if saving fails - not critical
+    }
   }
 
   fun selectAction(state: State): Int {

@@ -2,22 +2,31 @@ package com.google.mediapipe.examples.poselandmarker
 
 import android.app.AlertDialog
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.navigation.Navigation
 import androidx.navigation.fragment.NavHostFragment
 import com.google.mediapipe.examples.poselandmarker.databinding.ActivityMainBinding
-import com.google.mediapipe.examples.poselandmarker.fragment.CameraFragment
+import com.google.mediapipe.examples.poselandmarker.stats.WorkoutStatsManager
+import com.google.mediapipe.examples.poselandmarker.R
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
     private lateinit var drawerLayout: DrawerLayout
+    
+    // Stats manager for workout tracking and recommendations
+    private lateinit var statsManager: WorkoutStatsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +36,19 @@ class MainActivity : AppCompatActivity() {
         // Setup toolbar and navigation drawer
         setSupportActionBar(binding.toolbar)
         drawerLayout = binding.drawerLayout
+        
+        // Initialize workout stats manager
+        statsManager = WorkoutStatsManager(
+            context = this,
+            viewModel = viewModel,
+            lifecycleOwner = this,
+            onExerciseSelected = { exerciseType ->
+                // Switch to selected exercise
+                viewModel.setExerciseType(exerciseType)
+                binding.toolbar.title = getExerciseTitle(exerciseType)
+                Toast.makeText(this, "Switched to ${getExerciseTitle(exerciseType)}", Toast.LENGTH_SHORT).show()
+            }
+        )
         
         // Setup NavigationView click listeners
         binding.navView.setNavigationItemSelectedListener { menuItem ->
@@ -67,14 +89,22 @@ class MainActivity : AppCompatActivity() {
                     drawerLayout.closeDrawers()
                     true
                 }
+                R.id.menu_stats -> {
+                    // Show workout statistics
+                    statsManager.showWorkoutStats()
+                    drawerLayout.closeDrawers()
+                    true
+                }
                 R.id.menu_toggle_camera -> {
                     // Toggle front/back camera
-                    val cameraFragment = supportFragmentManager
-                        .findFragmentById(R.id.fragment_container)
-                        ?.childFragmentManager
-                        ?.fragments
-                        ?.firstOrNull() as? CameraFragment
-                    cameraFragment?.toggleCamera()
+                    val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragment_container) as NavHostFragment
+                    navHostFragment.childFragmentManager.fragments.firstOrNull()?.let { fragment ->
+                        // Use a message/action to trigger camera toggle instead of directly calling private method
+                        val action = Bundle().apply {
+                            putBoolean("TOGGLE_CAMERA", true)
+                        }
+                        Navigation.findNavController(fragment.requireView()).navigate(R.id.camera_fragment, action)
+                    }
                     drawerLayout.closeDrawers()
                     true
                 }
@@ -91,14 +121,40 @@ class MainActivity : AppCompatActivity() {
         updateToolbarTitle()
     }
     
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+    
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_stats -> {
+                statsManager.showWorkoutStats()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+    
     private fun updateToolbarTitle() {
-        binding.toolbar.title = when (viewModel.currentExerciseType) {
+        binding.toolbar.title = getExerciseTitle(viewModel.currentExerciseType)
+    }
+    
+    private fun getExerciseTitle(exerciseType: ExerciseType): String {
+        return when (exerciseType) {
             ExerciseType.BICEP -> "Bicep Curl"
             ExerciseType.SQUAT -> "Squat"
             ExerciseType.LATERAL_RAISE -> "Lateral Raise"
             ExerciseType.LUNGES -> "Lunges"
             ExerciseType.SHOULDER_PRESS -> "Shoulder Press"
         }
+    }
+    
+    /**
+     * Provides access to the WorkoutStatsManager for fragments
+     */
+    fun getWorkoutStatsManager(): WorkoutStatsManager {
+        return statsManager
     }
     
     private fun showModelSettingsDialog() {
@@ -215,4 +271,11 @@ class MainActivity : AppCompatActivity() {
         
         builder.create().show()
     }
-}
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::statsManager.isInitialized) {
+            statsManager.cleanup()
+        }
+    }
+  }

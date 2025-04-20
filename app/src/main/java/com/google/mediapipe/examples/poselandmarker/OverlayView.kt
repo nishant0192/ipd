@@ -204,11 +204,11 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         
         // Process exercise data but don't draw text
         when (exerciseType) {
-            ExerciseType.BICEP -> processBicepInternal(personLandmarks)
-            ExerciseType.SQUAT -> processSquatInternal(personLandmarks)
-            ExerciseType.LATERAL_RAISE -> processLateralRaiseInternal(personLandmarks)
-            ExerciseType.LUNGES -> processLungesInternal(personLandmarks)
-            ExerciseType.SHOULDER_PRESS -> processShoulderPressInternal(personLandmarks)
+            ExerciseType.BICEP -> processBicepInternal(personLandmarks, canvas)
+            ExerciseType.SQUAT -> processSquatInternal(personLandmarks, canvas)
+            ExerciseType.LATERAL_RAISE -> processLateralRaiseInternal(personLandmarks, canvas)
+            ExerciseType.LUNGES -> processLungesInternal(personLandmarks, canvas)
+            ExerciseType.SHOULDER_PRESS -> processShoulderPressInternal(personLandmarks, canvas)
         }
     }
 
@@ -250,7 +250,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     }
 
     // ----- BICEP PROCESSING (internal version without text drawing) -----
-    private fun processBicepInternal(landmarks: List<Any>) {
+    private fun processBicepInternal(landmarks: List<Any>, canvas: Canvas) {
         if (landmarks.size <= 16) return
 
         val leftShoulder = landmarks[11]
@@ -290,7 +290,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     }
 
     // ----- SQUAT PROCESSING (internal version without text drawing) -----
-    private fun processSquatInternal(landmarks: List<Any>) {
+    private fun processSquatInternal(landmarks: List<Any>, canvas: Canvas) {
         if (landmarks.size <= 28) return
 
         val leftHip = landmarks[23]
@@ -329,7 +329,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     }
 
     // ----- LATERAL RAISE PROCESSING (internal version without text drawing) -----
-    private fun processLateralRaiseInternal(landmarks: List<Any>) {
+    private fun processLateralRaiseInternal(landmarks: List<Any>, canvas: Canvas) {
         if (landmarks.size <= 24) return
 
         val leftShoulder = landmarks[11]
@@ -376,7 +376,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     }
 
     // ----- LUNGES PROCESSING (internal version without text drawing) -----
-    private fun processLungesInternal(landmarks: List<Any>) {
+    private fun processLungesInternal(landmarks: List<Any>, canvas: Canvas) {
         if (landmarks.size <= 28) return
 
         val leftHip = landmarks[23]
@@ -415,7 +415,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     }
 
     // ----- SHOULDER PRESS PROCESSING (internal version without text drawing) -----
-    private fun processShoulderPressInternal(landmarks: List<Any>) {
+    private fun processShoulderPressInternal(landmarks: List<Any>, canvas: Canvas) {
         if (landmarks.size <= 16) return
 
         val leftShoulder = landmarks[11]

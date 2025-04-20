@@ -16,11 +16,14 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.google.mediapipe.examples.poselandmarker.*
 import com.google.mediapipe.examples.poselandmarker.databinding.FragmentCameraBinding
+import com.google.mediapipe.examples.poselandmarker.databinding.InfoBottomSheetBinding
+import com.google.mediapipe.examples.poselandmarker.stats.WorkoutStatsManager
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import com.google.mediapipe.examples.poselandmarker.R
 
 class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
@@ -30,13 +33,20 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
     private val fragmentCameraBinding get() = _fragmentCameraBinding!!
+    
+    // Add a binding for the bottom sheet
+    private var _bottomSheetBinding: InfoBottomSheetBinding? = null
+    private val bottomSheetBinding get() = _bottomSheetBinding!!
 
     // Shared ViewModel from MainActivity
     private val viewModel: MainViewModel by activityViewModels()
+    
+    // Workout stats manager reference from MainActivity
+    private var statsManager: WorkoutStatsManager? = null
 
     private lateinit var poseLandmarkerHelper: PoseLandmarkerHelper
     
-    // NEW: Exercise feedback manager
+    // Exercise feedback manager
     private lateinit var exerciseFeedbackManager: ExerciseFeedbackManager
 
     private var preview: Preview? = null
@@ -62,8 +72,19 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
     @SuppressLint("UnsafeOptInUsageError")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        // Initialize the bottom sheet binding properly
+        val bottomSheetView = view.findViewById<View>(R.id.bottom_sheet_layout)
+        if (bottomSheetView != null) {
+            _bottomSheetBinding = InfoBottomSheetBinding.bind(bottomSheetView)
+        } else {
+            Log.e(TAG, "Bottom sheet layout not found!")
+        }
 
         backgroundExecutor = Executors.newSingleThreadExecutor()
+
+        // Get reference to the MainActivity's WorkoutStatsManager
+        statsManager = (activity as? MainActivity)?.getWorkoutStatsManager()
 
         // Set up camera when view is ready
         fragmentCameraBinding.viewFinder.post {
@@ -83,16 +104,23 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             )
         }
 
-        // Initialize bottom sheet controls
-        initBottomSheetControls()
+        // Initialize bottom sheet controls if binding is available
+        if (_bottomSheetBinding != null) {
+            initBottomSheetControls()
+        }
 
         // Set up switch camera button
         fragmentCameraBinding.switchCamera.setOnClickListener {
             toggleCamera()
         }
         
-        // NEW: Initialize the exercise stats overlay
+        // Initialize the exercise stats overlay
         initExerciseOverlay()
+        
+        // Add FAB for workout stats
+        fragmentCameraBinding.fabWorkoutStats.setOnClickListener {
+            statsManager?.showWorkoutStats()
+        }
 
         viewModel.settingsChanged.observe(viewLifecycleOwner) { changed ->
             if (changed) {
@@ -100,9 +128,27 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                 viewModel.acknowledgeSettingsChanged()
             }
         }
+        
+        // Check if we need to toggle camera (from navigation arguments)
+        arguments?.let {
+            if (it.getBoolean("TOGGLE_CAMERA", false)) {
+                toggleCamera()
+                // Clear the argument after handling
+                it.remove("TOGGLE_CAMERA")
+            }
+        }
     }
 
-    // NEW: Initialize the exercise stats overlay
+    // Make camera toggling public
+    fun toggleCamera() {
+        cameraFacing = if (cameraFacing == CameraSelector.LENS_FACING_FRONT)
+            CameraSelector.LENS_FACING_BACK
+        else
+            CameraSelector.LENS_FACING_FRONT
+        setUpCamera()
+    }
+
+    // Initialize the exercise stats overlay
     private fun initExerciseOverlay() {
         val exerciseStatsBinding = fragmentCameraBinding.exerciseStatsOverlay
         
@@ -131,6 +177,118 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             ExerciseType.SHOULDER_PRESS -> "Shoulder Press"
         }
     }
+    
+    // Add this method to initialize bottom sheet controls
+    private fun initBottomSheetControls() {
+        // Safety check to ensure binding is available
+        if (_bottomSheetBinding == null) return
+        
+        // Update the values in the bottom sheet
+        bottomSheetBinding.detectionThresholdValue.text =
+            String.format(Locale.US, "%.2f", viewModel.currentMinPoseDetectionConfidence)
+        bottomSheetBinding.trackingThresholdValue.text =
+            String.format(Locale.US, "%.2f", viewModel.currentMinPoseTrackingConfidence)
+        bottomSheetBinding.presenceThresholdValue.text = 
+            String.format(Locale.US, "%.2f", viewModel.currentMinPosePresenceConfidence)
+            
+        // Set model spinner
+        bottomSheetBinding.spinnerModel.setSelection(viewModel.currentModel, false)
+        bottomSheetBinding.spinnerModel.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    viewModel.setModel(position)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {
+                    // No-op
+                }
+            }
+            
+        // Set delegate spinner
+        bottomSheetBinding.spinnerDelegate.setSelection(viewModel.currentDelegate, false)
+        bottomSheetBinding.spinnerDelegate.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    viewModel.setDelegate(position)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {
+                    // No-op
+                }
+            }
+            
+        // Set exercise type spinner
+        bottomSheetBinding.spinnerExercise.setSelection(viewModel.currentExerciseType.ordinal, false)
+        bottomSheetBinding.spinnerExercise.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    viewModel.setExerciseType(ExerciseType.values()[position])
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {
+                    // No-op
+                }
+            }
+            
+        // Set threshold controllers
+        bottomSheetBinding.detectionThresholdMinus.setOnClickListener {
+            val threshold = viewModel.currentMinPoseDetectionConfidence - 0.1f
+            if (threshold >= 0) {
+                viewModel.setMinPoseDetectionConfidence(threshold)
+                updateControlsUi()
+            }
+        }
+        bottomSheetBinding.detectionThresholdPlus.setOnClickListener {
+            val threshold = viewModel.currentMinPoseDetectionConfidence + 0.1f
+            if (threshold <= 1) {
+                viewModel.setMinPoseDetectionConfidence(threshold)
+                updateControlsUi()
+            }
+        }
+        bottomSheetBinding.trackingThresholdMinus.setOnClickListener {
+            val threshold = viewModel.currentMinPoseTrackingConfidence - 0.1f
+            if (threshold >= 0) {
+                viewModel.setMinPoseTrackingConfidence(threshold)
+                updateControlsUi()
+            }
+        }
+        bottomSheetBinding.trackingThresholdPlus.setOnClickListener {
+            val threshold = viewModel.currentMinPoseTrackingConfidence + 0.1f
+            if (threshold <= 1) {
+                viewModel.setMinPoseTrackingConfidence(threshold)
+                updateControlsUi()
+            }
+        }
+        bottomSheetBinding.presenceThresholdMinus.setOnClickListener {
+            val threshold = viewModel.currentMinPosePresenceConfidence - 0.1f
+            if (threshold >= 0) {
+                viewModel.setMinPosePresenceConfidence(threshold)
+                updateControlsUi()
+            }
+        }
+        bottomSheetBinding.presenceThresholdPlus.setOnClickListener {
+            val threshold = viewModel.currentMinPosePresenceConfidence + 0.1f
+            if (threshold <= 1) {
+                viewModel.setMinPosePresenceConfidence(threshold)
+                updateControlsUi()
+            }
+        }
+    }
 
     override fun onResume() {
         super.onResume()
@@ -155,17 +313,21 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
     override fun onDestroyView() {
         _fragmentCameraBinding = null
+        _bottomSheetBinding = null
         super.onDestroyView()
         backgroundExecutor.shutdown()
         backgroundExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
     }
 
     private fun updateControlsUi() {
-        fragmentCameraBinding.bottomSheetLayout.detectionThresholdValue.text =
+        // Safety check to ensure binding is available
+        if (_bottomSheetBinding == null) return
+        
+        bottomSheetBinding.detectionThresholdValue.text =
             String.format(Locale.US, "%.2f", poseLandmarkerHelper.minPoseDetectionConfidence)
-        fragmentCameraBinding.bottomSheetLayout.trackingThresholdValue.text =
+        bottomSheetBinding.trackingThresholdValue.text =
             String.format(Locale.US, "%.2f", poseLandmarkerHelper.minPoseTrackingConfidence)
-        fragmentCameraBinding.bottomSheetLayout.presenceThresholdValue.text =
+        bottomSheetBinding.presenceThresholdValue.text =
             String.format(Locale.US, "%.2f", poseLandmarkerHelper.minPosePresenceConfidence)
 
         backgroundExecutor.execute {
@@ -174,7 +336,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
         }
         fragmentCameraBinding.overlay.clear()
         
-        // NEW: Reset exercise feedback manager
+        // Reset exercise feedback manager
         if (this::exerciseFeedbackManager.isInitialized) {
             exerciseFeedbackManager.resetCounters()
         }
@@ -198,14 +360,6 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                 poseLandmarkerHelper.setupPoseLandmarker()
             }
         }
-    }
-
-    private fun toggleCamera() {
-        cameraFacing = if (cameraFacing == CameraSelector.LENS_FACING_FRONT)
-            CameraSelector.LENS_FACING_BACK
-        else
-            CameraSelector.LENS_FACING_FRONT
-        setUpCamera()
     }
 
     private fun setUpCamera() {
@@ -267,9 +421,11 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
     override fun onResults(resultBundle: PoseLandmarkerHelper.ResultBundle) {
         requireActivity().runOnUiThread {
-            // Update inference time
-            fragmentCameraBinding.bottomSheetLayout.inferenceTimeVal.text =
-                String.format("%d ms", resultBundle.inferenceTime)
+            // Update inference time if bottom sheet binding exists
+            if (_bottomSheetBinding != null) {
+                bottomSheetBinding.inferenceTimeVal.text =
+                    String.format("%d ms", resultBundle.inferenceTime)
+            }
                 
             // Set the exercise type for the overlay
             fragmentCameraBinding.overlay.setExerciseType(viewModel.currentExerciseType)
@@ -282,7 +438,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                 runningMode = RunningMode.LIVE_STREAM
             )
             
-            // NEW: Process pose results with exercise feedback manager
+            // Process pose results with exercise feedback manager
             if (this@CameraFragment::exerciseFeedbackManager.isInitialized) {
                 // Get proximity distance from overlay
                 val proximityDistance = fragmentCameraBinding.overlay.getProximityDistance() 
@@ -293,13 +449,13 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     proximityDistance
                 )
                 
-                // If a rep was completed, notify the ViewModel
+                // If a rep was completed, notify the ViewModel only if workout is active
                 if (exerciseFeedbackManager.wasRepJustCompleted()) {
                     val angle = exerciseFeedbackManager.getCurrentAngle()
-                    val errors = exerciseFeedbackManager.getFormErrors().map { it.name.lowercase() }
+                    val hasErrors = exerciseFeedbackManager.getFormErrors().isNotEmpty()
                     
-                    // Record the rep in the ViewModel (for RL/recommendations)
-                    viewModel.recordRep(angle, errors)
+                    // Record the rep in the stats manager (which checks if workout is active)
+                    statsManager?.recordRep(angle, hasErrors)
                 }
             }
             
@@ -310,8 +466,8 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
     override fun onError(error: String, errorCode: Int) {
         requireActivity().runOnUiThread {
             Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
-            if (errorCode == PoseLandmarkerHelper.GPU_ERROR) {
-                fragmentCameraBinding.bottomSheetLayout.spinnerDelegate.setSelection(
+            if (errorCode == PoseLandmarkerHelper.GPU_ERROR && _bottomSheetBinding != null) {
+                bottomSheetBinding.spinnerDelegate.setSelection(
                     PoseLandmarkerHelper.DELEGATE_CPU, false
                 )
             }

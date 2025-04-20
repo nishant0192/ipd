@@ -25,6 +25,15 @@
         </menu>
     </item>
     
+    <item android:title="Statistics">
+        <menu>
+            <item
+                android:id="@+id/menu_stats"
+                android:icon="@drawable/ic_stats"
+                android:title="Workout Statistics" />
+        </menu>
+    </item>
+    
     <item android:title="Camera Settings">
         <menu>
             <item
