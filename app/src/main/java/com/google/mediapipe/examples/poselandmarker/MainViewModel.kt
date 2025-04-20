@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 enum class ExerciseType {
     BICEP,
     SQUAT,
-    LATERAL_RAISE
+    LATERAL_RAISE,
+    LUNGES,
+    SHOULDER_PRESS
 }
 
 
