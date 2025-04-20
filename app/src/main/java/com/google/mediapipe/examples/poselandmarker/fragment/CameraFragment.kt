@@ -31,20 +31,23 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
     private val fragmentCameraBinding get() = _fragmentCameraBinding!!
 
-    // Shared ViewModel from MainActivity.
+    // Shared ViewModel from MainActivity
     private val viewModel: MainViewModel by activityViewModels()
 
     private lateinit var poseLandmarkerHelper: PoseLandmarkerHelper
+    
+    // NEW: Exercise feedback manager
+    private lateinit var exerciseFeedbackManager: ExerciseFeedbackManager
 
     private var preview: Preview? = null
     private var imageAnalyzer: ImageAnalysis? = null
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
 
-    // Use front camera by default.
+    // Use front camera by default
     private var cameraFacing = CameraSelector.LENS_FACING_FRONT
 
-    // Background executor for ML ops.
+    // Background executor for ML ops
     private lateinit var backgroundExecutor: ExecutorService
 
     override fun onCreateView(
@@ -62,12 +65,12 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
         backgroundExecutor = Executors.newSingleThreadExecutor()
 
-        // Set up camera when view is ready.
+        // Set up camera when view is ready
         fragmentCameraBinding.viewFinder.post {
             setUpCamera()
         }
 
-        // Initialize PoseLandmarkerHelper on background thread.
+        // Initialize PoseLandmarkerHelper on background thread
         backgroundExecutor.execute {
             poseLandmarkerHelper = PoseLandmarkerHelper(
                 context = requireContext(),
@@ -80,12 +83,52 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             )
         }
 
-        // Initialize bottom sheet controls.
+        // Initialize bottom sheet controls
         initBottomSheetControls()
 
-        // Set up switch camera button.
+        // Set up switch camera button
         fragmentCameraBinding.switchCamera.setOnClickListener {
             toggleCamera()
+        }
+        
+        // NEW: Initialize the exercise stats overlay
+        initExerciseOverlay()
+
+        viewModel.settingsChanged.observe(viewLifecycleOwner) { changed ->
+            if (changed) {
+                updateCameraFromViewModel()
+                viewModel.acknowledgeSettingsChanged()
+            }
+        }
+    }
+
+    // NEW: Initialize the exercise stats overlay
+    private fun initExerciseOverlay() {
+        val exerciseStatsBinding = fragmentCameraBinding.exerciseStatsOverlay
+        
+        // Create the exercise feedback manager
+        exerciseFeedbackManager = ExerciseFeedbackManager(
+            overlayView = fragmentCameraBinding.overlay,
+            repCountTextView = exerciseStatsBinding.tvRepCount,
+            formFeedbackTextView = exerciseStatsBinding.tvFormFeedback,
+            formTipTextView = exerciseStatsBinding.tvFormTip,
+            angleTextView = exerciseStatsBinding.tvCurrentAngle,
+            distanceTextView = exerciseStatsBinding.tvDistanceIndicator,
+            repStageTextView = exerciseStatsBinding.tvRepStage,
+            errorFlashView = exerciseStatsBinding.viewErrorFlash,
+            cardFormFeedback = exerciseStatsBinding.cardFormFeedback
+        )
+        
+        // Set the current exercise type
+        exerciseFeedbackManager.exerciseType = viewModel.currentExerciseType
+        
+        // Update exercise name display
+        exerciseStatsBinding.tvExerciseType.text = when(viewModel.currentExerciseType) {
+            ExerciseType.BICEP -> "Bicep Curl"
+            ExerciseType.SQUAT -> "Squat"
+            ExerciseType.LATERAL_RAISE -> "Lateral Raise"
+            ExerciseType.LUNGES -> "Lunges"
+            ExerciseType.SHOULDER_PRESS -> "Shoulder Press"
         }
     }
 
@@ -117,101 +160,6 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
         backgroundExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
     }
 
-    private fun initBottomSheetControls() {
-        val bottomSheet = fragmentCameraBinding.bottomSheetLayout
-
-        bottomSheet.detectionThresholdValue.text = String.format(
-            Locale.US, "%.2f", viewModel.currentMinPoseDetectionConfidence
-        )
-        bottomSheet.trackingThresholdValue.text = String.format(
-            Locale.US, "%.2f", viewModel.currentMinPoseTrackingConfidence
-        )
-        bottomSheet.presenceThresholdValue.text = String.format(
-            Locale.US, "%.2f", viewModel.currentMinPosePresenceConfidence
-        )
-
-        bottomSheet.detectionThresholdMinus.setOnClickListener {
-            if (poseLandmarkerHelper.minPoseDetectionConfidence >= 0.2f) {
-                poseLandmarkerHelper.minPoseDetectionConfidence -= 0.1f
-                updateControlsUi()
-            }
-        }
-        bottomSheet.detectionThresholdPlus.setOnClickListener {
-            if (poseLandmarkerHelper.minPoseDetectionConfidence <= 0.8f) {
-                poseLandmarkerHelper.minPoseDetectionConfidence += 0.1f
-                updateControlsUi()
-            }
-        }
-
-        bottomSheet.trackingThresholdMinus.setOnClickListener {
-            if (poseLandmarkerHelper.minPoseTrackingConfidence >= 0.2f) {
-                poseLandmarkerHelper.minPoseTrackingConfidence -= 0.1f
-                updateControlsUi()
-            }
-        }
-        bottomSheet.trackingThresholdPlus.setOnClickListener {
-            if (poseLandmarkerHelper.minPoseTrackingConfidence <= 0.8f) {
-                poseLandmarkerHelper.minPoseTrackingConfidence += 0.1f
-                updateControlsUi()
-            }
-        }
-
-        bottomSheet.presenceThresholdMinus.setOnClickListener {
-            if (poseLandmarkerHelper.minPosePresenceConfidence >= 0.2f) {
-                poseLandmarkerHelper.minPosePresenceConfidence -= 0.1f
-                updateControlsUi()
-            }
-        }
-        bottomSheet.presenceThresholdPlus.setOnClickListener {
-            if (poseLandmarkerHelper.minPosePresenceConfidence <= 0.8f) {
-                poseLandmarkerHelper.minPosePresenceConfidence += 0.1f
-                updateControlsUi()
-            }
-        }
-
-        bottomSheet.spinnerModel.setSelection(viewModel.currentModel, false)
-        bottomSheet.spinnerModel.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                poseLandmarkerHelper.currentModel = position
-                updateControlsUi()
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-
-        bottomSheet.spinnerDelegate.setSelection(viewModel.currentDelegate, false)
-        bottomSheet.spinnerDelegate.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                poseLandmarkerHelper.currentDelegate = position
-                updateControlsUi()
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-
-        bottomSheet.spinnerExercise.setSelection(
-            when (viewModel.currentExerciseType) {
-                ExerciseType.BICEP -> 0
-                ExerciseType.SQUAT -> 1
-                ExerciseType.LATERAL_RAISE -> 2
-                ExerciseType.LUNGES -> 3
-                ExerciseType.SHOULDER_PRESS -> 4
-            }, false
-        )
-        bottomSheet.spinnerExercise.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, v: View?, position: Int, id: Long) {
-                val newExercise = when (position) {
-                    0 -> ExerciseType.BICEP
-                    1 -> ExerciseType.SQUAT
-                    2 -> ExerciseType.LATERAL_RAISE
-                    3 -> ExerciseType.LUNGES
-                    4 -> ExerciseType.SHOULDER_PRESS
-                    else -> ExerciseType.BICEP
-                }
-                viewModel.setExerciseType(newExercise)
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-    }
-
     private fun updateControlsUi() {
         fragmentCameraBinding.bottomSheetLayout.detectionThresholdValue.text =
             String.format(Locale.US, "%.2f", poseLandmarkerHelper.minPoseDetectionConfidence)
@@ -225,6 +173,31 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             poseLandmarkerHelper.setupPoseLandmarker()
         }
         fragmentCameraBinding.overlay.clear()
+        
+        // NEW: Reset exercise feedback manager
+        if (this::exerciseFeedbackManager.isInitialized) {
+            exerciseFeedbackManager.resetCounters()
+        }
+    }
+
+    private fun updateCameraFromViewModel() {
+        if (this::poseLandmarkerHelper.isInitialized) {
+            poseLandmarkerHelper.minPoseDetectionConfidence = viewModel.currentMinPoseDetectionConfidence
+            poseLandmarkerHelper.minPoseTrackingConfidence = viewModel.currentMinPoseTrackingConfidence
+            poseLandmarkerHelper.minPosePresenceConfidence = viewModel.currentMinPosePresenceConfidence
+            poseLandmarkerHelper.currentDelegate = viewModel.currentDelegate
+            poseLandmarkerHelper.currentModel = viewModel.currentModel
+            
+            if (this::exerciseFeedbackManager.isInitialized) {
+                exerciseFeedbackManager.exerciseType = viewModel.currentExerciseType
+            }
+            
+            // Restart the PoseLandmarkerHelper with new settings
+            backgroundExecutor.execute {
+                poseLandmarkerHelper.clearPoseLandmarker()
+                poseLandmarkerHelper.setupPoseLandmarker()
+            }
+        }
     }
 
     private fun toggleCamera() {
@@ -294,15 +267,42 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
     override fun onResults(resultBundle: PoseLandmarkerHelper.ResultBundle) {
         requireActivity().runOnUiThread {
+            // Update inference time
             fragmentCameraBinding.bottomSheetLayout.inferenceTimeVal.text =
                 String.format("%d ms", resultBundle.inferenceTime)
+                
+            // Set the exercise type for the overlay
             fragmentCameraBinding.overlay.setExerciseType(viewModel.currentExerciseType)
+            
+            // Update the overlay with pose landmarks
             fragmentCameraBinding.overlay.setResults(
                 poseLandmarkerResults = resultBundle.results.first(),
                 imageHeight = resultBundle.inputImageHeight,
                 imageWidth = resultBundle.inputImageWidth,
                 runningMode = RunningMode.LIVE_STREAM
             )
+            
+            // NEW: Process pose results with exercise feedback manager
+            if (this@CameraFragment::exerciseFeedbackManager.isInitialized) {
+                // Get proximity distance from overlay
+                val proximityDistance = fragmentCameraBinding.overlay.getProximityDistance() 
+                
+                // Process pose results to update exercise feedback
+                exerciseFeedbackManager.processPoseResults(
+                    resultBundle.results.first(),
+                    proximityDistance
+                )
+                
+                // If a rep was completed, notify the ViewModel
+                if (exerciseFeedbackManager.wasRepJustCompleted()) {
+                    val angle = exerciseFeedbackManager.getCurrentAngle()
+                    val errors = exerciseFeedbackManager.getFormErrors().map { it.name.lowercase() }
+                    
+                    // Record the rep in the ViewModel (for RL/recommendations)
+                    viewModel.recordRep(angle, errors)
+                }
+            }
+            
             fragmentCameraBinding.overlay.invalidate()
         }
     }

@@ -109,4 +109,41 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     _recommendations.value = recs
   }
+
+  private val _settingsChanged = MutableLiveData<Boolean>(false)
+    val settingsChanged: LiveData<Boolean> = _settingsChanged
+
+    fun setModel(m: Int) {
+        _model = m
+        _settingsChanged.value = true
+    }
+
+    fun setDelegate(d: Int) {
+        _delegate = d
+        _settingsChanged.value = true
+    }
+
+    fun setMinPoseDetectionConfidence(c: Float) {
+        _minPoseDetectionConfidence = c
+        _settingsChanged.value = true
+    }
+
+    fun setMinPoseTrackingConfidence(c: Float) {
+        _minPoseTrackingConfidence = c
+        _settingsChanged.value = true
+    }
+
+    fun setMinPosePresenceConfidence(c: Float) {
+        _minPosePresenceConfidence = c
+        _settingsChanged.value = true
+    }
+
+    fun setExerciseType(t: ExerciseType) {
+        _exerciseType = t
+        _settingsChanged.value = true
+    }
+
+    fun acknowledgeSettingsChanged() {
+        _settingsChanged.value = false
+    }
 }

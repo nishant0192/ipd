@@ -177,12 +177,19 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         invalidate()
     }
 
+    // Add this method to retrieve the proximity distance
+    fun getProximityDistance(): Float {
+        return proximityDistance / 100f // Convert to meters
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val poseLandmarkerResult = results ?: return
         if (poseLandmarkerResult.landmarks().isEmpty()) return
 
         val personLandmarks = poseLandmarkerResult.landmarks()[0]
+        
+        // Draw points for landmarks
         for (lm in personLandmarks) {
             val lw = LandmarkWrapper(lm)
             canvas.drawPoint(
@@ -191,20 +198,59 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
                 pointPaint
             )
         }
+        
+        // Draw connections between landmarks
+        drawPoseConnections(canvas, personLandmarks)
+        
+        // Process exercise data but don't draw text
         when (exerciseType) {
-            ExerciseType.BICEP -> processBicep(canvas, personLandmarks)
-            ExerciseType.SQUAT -> processSquat(canvas, personLandmarks)
-            ExerciseType.LATERAL_RAISE -> processLateralRaise(canvas, personLandmarks)
-            ExerciseType.LUNGES -> processLunges(canvas, personLandmarks)
-            ExerciseType.SHOULDER_PRESS -> processShoulderPress(canvas, personLandmarks)
+            ExerciseType.BICEP -> processBicepInternal(personLandmarks)
+            ExerciseType.SQUAT -> processSquatInternal(personLandmarks)
+            ExerciseType.LATERAL_RAISE -> processLateralRaiseInternal(personLandmarks)
+            ExerciseType.LUNGES -> processLungesInternal(personLandmarks)
+            ExerciseType.SHOULDER_PRESS -> processShoulderPressInternal(personLandmarks)
         }
-        // Display the distance below the rep counters (at y = 250f).
-        val distanceMeters = proximityDistance / 100f
-        canvas.drawText("Distance: ${"%.2f".format(distanceMeters)} m", 50f, 250f, textPaint)
     }
 
-    // ----- BICEP PROCESSING -----
-    private fun processBicep(canvas: Canvas, landmarks: List<Any>) {
+    private fun drawPoseConnections(canvas: Canvas, landmarks: List<Any>) {
+        // Draw lines between connected landmarks
+        val connections = listOf(
+            // Face oval
+            Pair(0, 1), Pair(1, 2), Pair(2, 3), Pair(3, 4), Pair(4, 5),
+            Pair(5, 6), Pair(6, 7), Pair(7, 8), Pair(8, 9), Pair(9, 10),
+            
+            // Arms
+            Pair(11, 13), Pair(13, 15), // Left arm
+            Pair(12, 14), Pair(14, 16), // Right arm
+            
+            // Torso
+            Pair(11, 12), // Shoulders
+            Pair(11, 23), Pair(12, 24), // Shoulders to hips
+            Pair(23, 24), // Hips
+            
+            // Legs
+            Pair(23, 25), Pair(25, 27), Pair(27, 29), Pair(29, 31), // Left leg
+            Pair(24, 26), Pair(26, 28), Pair(28, 30), Pair(30, 32)  // Right leg
+        )
+        
+        for ((start, end) in connections) {
+            if (landmarks.size <= maxOf(start, end)) continue
+            
+            val startLandmark = LandmarkWrapper(landmarks[start])
+            val endLandmark = LandmarkWrapper(landmarks[end])
+            
+            canvas.drawLine(
+                offsetX + startLandmark.x * imageWidth * scaleFactor,
+                offsetY + startLandmark.y * imageHeight * scaleFactor,
+                offsetX + endLandmark.x * imageWidth * scaleFactor,
+                offsetY + endLandmark.y * imageHeight * scaleFactor,
+                linePaint
+            )
+        }
+    }
+
+    // ----- BICEP PROCESSING (internal version without text drawing) -----
+    private fun processBicepInternal(landmarks: List<Any>) {
         if (landmarks.size <= 16) return
 
         val leftShoulder = landmarks[11]
@@ -241,24 +287,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
 
         drawLimb(canvas, leftShoulder, leftElbow, leftWrist, leftColor)
         drawLimb(canvas, rightShoulder, rightElbow, rightWrist, rightColor)
-
-        val le = LandmarkWrapper(leftElbow)
-        val re = LandmarkWrapper(rightElbow)
-        canvas.drawText("L Elbow: ${leftElbowAngle.toInt()}°",
-            offsetX + le.x * imageWidth * scaleFactor,
-            offsetY + le.y * imageHeight * scaleFactor - 20,
-            textPaint)
-        canvas.drawText("R Elbow: ${rightElbowAngle.toInt()}°",
-            offsetX + re.x * imageWidth * scaleFactor,
-            offsetY + re.y * imageHeight * scaleFactor - 20,
-            textPaint)
-
-        canvas.drawText("L Reps: $repCountLeftBicep", 50f, 50f, textPaint)
-        canvas.drawText("R Reps: $repCountRightBicep", 50f, 100f, textPaint)
     }
 
-    // ----- SQUAT PROCESSING -----
-    private fun processSquat(canvas: Canvas, landmarks: List<Any>) {
+    // ----- SQUAT PROCESSING (internal version without text drawing) -----
+    private fun processSquatInternal(landmarks: List<Any>) {
         if (landmarks.size <= 28) return
 
         val leftHip = landmarks[23]
@@ -294,24 +326,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
 
         drawLimb(canvas, leftHip, leftKnee, leftAnkle, leftColor)
         drawLimb(canvas, rightHip, rightKnee, rightAnkle, rightColor)
-
-        val leftKneeWrap = LandmarkWrapper(leftKnee)
-        val rightKneeWrap = LandmarkWrapper(rightKnee)
-        canvas.drawText("L Knee: ${leftKneeAngle.toInt()}°",
-            offsetX + leftKneeWrap.x * imageWidth * scaleFactor,
-            offsetY + leftKneeWrap.y * imageHeight * scaleFactor - 20,
-            textPaint)
-        canvas.drawText("R Knee: ${rightKneeAngle.toInt()}°",
-            offsetX + rightKneeWrap.x * imageWidth * scaleFactor,
-            offsetY + rightKneeWrap.y * imageHeight * scaleFactor - 20,
-            textPaint)
-
-        canvas.drawText("L Squat Reps: $repCountSquatLeft", 50f, 50f, textPaint)
-        canvas.drawText("R Squat Reps: $repCountSquatRight", 50f, 100f, textPaint)
     }
 
-    // ----- LATERAL RAISE PROCESSING -----
-    private fun processLateralRaise(canvas: Canvas, landmarks: List<Any>) {
+    // ----- LATERAL RAISE PROCESSING (internal version without text drawing) -----
+    private fun processLateralRaiseInternal(landmarks: List<Any>) {
         if (landmarks.size <= 24) return
 
         val leftShoulder = landmarks[11]
@@ -355,24 +373,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         val rightWrist = landmarks[16]
         drawLimb(canvas, leftShoulder, leftElbow, leftWrist, leftColor)
         drawLimb(canvas, rightShoulder, rightElbow, rightWrist, rightColor)
-
-        val ls = LandmarkWrapper(leftShoulder)
-        val rs = LandmarkWrapper(rightShoulder)
-        canvas.drawText("L Raise: ${leftAbductionAngle.toInt()}°",
-            offsetX + ls.x * imageWidth * scaleFactor,
-            offsetY + ls.y * imageHeight * scaleFactor - 20,
-            textPaint)
-        canvas.drawText("R Raise: ${rightAbductionAngle.toInt()}°",
-            offsetX + rs.x * imageWidth * scaleFactor,
-            offsetY + rs.y * imageHeight * scaleFactor - 20,
-            textPaint)
-
-        canvas.drawText("L Lateral Reps: $repCountLateralLeft", 50f, 150f, textPaint)
-        canvas.drawText("R Lateral Reps: $repCountLateralRight", 50f, 200f, textPaint)
     }
 
-    // ----- LUNGES PROCESSING -----
-    private fun processLunges(canvas: Canvas, landmarks: List<Any>) {
+    // ----- LUNGES PROCESSING (internal version without text drawing) -----
+    private fun processLungesInternal(landmarks: List<Any>) {
         if (landmarks.size <= 28) return
 
         val leftHip = landmarks[23]
@@ -408,24 +412,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
 
         drawLimb(canvas, leftHip, leftKnee, leftAnkle, leftColor)
         drawLimb(canvas, rightHip, rightKnee, rightAnkle, rightColor)
-
-        val leftKneeWrap = LandmarkWrapper(leftKnee)
-        val rightKneeWrap = LandmarkWrapper(rightKnee)
-        canvas.drawText("L Lunge: ${leftKneeAngle.toInt()}°",
-            offsetX + leftKneeWrap.x * imageWidth * scaleFactor,
-            offsetY + leftKneeWrap.y * imageHeight * scaleFactor - 20,
-            textPaint)
-        canvas.drawText("R Lunge: ${rightKneeAngle.toInt()}°",
-            offsetX + rightKneeWrap.x * imageWidth * scaleFactor,
-            offsetY + rightKneeWrap.y * imageHeight * scaleFactor - 20,
-            textPaint)
-
-        canvas.drawText("L Lunges Reps: $repCountLungesLeft", 50f, 50f, textPaint)
-        canvas.drawText("R Lunges Reps: $repCountLungesRight", 50f, 100f, textPaint)
     }
 
-    // ----- SHOULDER PRESS PROCESSING -----
-    private fun processShoulderPress(canvas: Canvas, landmarks: List<Any>) {
+    // ----- SHOULDER PRESS PROCESSING (internal version without text drawing) -----
+    private fun processShoulderPressInternal(landmarks: List<Any>) {
         if (landmarks.size <= 16) return
 
         val leftShoulder = landmarks[11]
@@ -458,20 +448,6 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
 
         drawLimb(canvas, leftShoulder, leftWrist, leftWrist, leftColor)
         drawLimb(canvas, rightShoulder, rightWrist, rightWrist, rightColor)
-
-        val ls = LandmarkWrapper(leftShoulder)
-        val rs = LandmarkWrapper(rightShoulder)
-        canvas.drawText("L Press: ${leftPressAngle.toInt()}°",
-            offsetX + ls.x * imageWidth * scaleFactor,
-            offsetY + ls.y * imageHeight * scaleFactor - 20,
-            textPaint)
-        canvas.drawText("R Press: ${rightPressAngle.toInt()}°",
-            offsetX + rs.x * imageWidth * scaleFactor,
-            offsetY + rs.y * imageHeight * scaleFactor - 20,
-            textPaint)
-
-        canvas.drawText("L Press Reps: $repCountShoulderLeft", 50f, 50f, textPaint)
-        canvas.drawText("R Press Reps: $repCountShoulderRight", 50f, 100f, textPaint)
     }
 
     // Helper to compute the angle between vector (shoulder→wrist) and vertical.
@@ -532,14 +508,6 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
             } catch (e: Exception) { }
         }
         return if (count > 0) - (sum / count) else 0f
-    }
-
-    // If you want a more accurate distance measurement using mobile sensors,
-    // you can integrate with Android’s built-in sensors (e.g., the proximity sensor)
-    // as done here. For now, getAccurateDistance() returns the proximity sensor reading.
-    private fun getAccurateDistance(landmarks: List<Any>): Float {
-        // Use the proximity sensor value (converted to meters).
-        return proximityDistance / 100f
     }
 
     fun setResults(
