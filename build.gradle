@@ -1,42 +1,11 @@
+// only declare the plugins (apply false!), no android{} block here
 plugins {
-    id 'com.android.application'
-    id 'kotlin-android'
-    id 'kotlin-kapt'
+    id "com.android.application"      apply false
+    id "org.jetbrains.kotlin.android" apply false
+    id "org.jetbrains.kotlin.kapt"    apply false
+    id "de.undercouch.download"       apply false
 }
 
-android {
-    compileSdk 34
-
-    defaultConfig {
-        applicationId "com.example.workouttracker"
-        minSdk 21
-        targetSdk 34
-        versionCode 1
-        versionName "1.0"
-    }
-
-    buildFeatures {
-        viewBinding true
-    }
-}
-
-dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.0"
-    implementation 'androidx.core:core-ktx:1.10.1'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-
-    // Room
-    implementation "androidx.room:room-runtime:2.5.1"
-    kapt "androidx.room:room-compiler:2.5.1"
-    implementation "androidx.room:room-ktx:2.5.1"
-
-    // DataStore (Preferences)
-    implementation "androidx.datastore:datastore-preferences:1.0.0"
-
-    // Coroutines
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1"
-
-    // Gson
-    implementation 'com.google.code.gson:gson:2.10.1'
+task clean(type: Delete) {
+    delete rootProject.buildDir
 }

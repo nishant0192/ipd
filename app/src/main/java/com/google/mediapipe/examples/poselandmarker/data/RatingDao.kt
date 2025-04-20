@@ -6,7 +6,9 @@ import androidx.room.Query
 
 @Dao
 interface RatingDao {
-  @Insert suspend fun insert(r: RatingEntity)
+  @Insert
+  fun insert(r: RatingEntity)
+
   @Query("SELECT * FROM ratings")
-  suspend fun allRatings(): List<RatingEntity>
+  fun allRatings(): List<RatingEntity>
 }

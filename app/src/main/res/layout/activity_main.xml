@@ -1,47 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-  xmlns:android="http://schemas.android.com/apk/res/android"
-  android:orientation="vertical"
-  android:padding="16dp"
-  android:layout_width="match_parent"
-  android:layout_height="match_parent">
-
-  <!-- Existing camera preview/NavHostFragment goes here -->
-  <FrameLayout
-    android:id="@+id/fragment_container"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="0dp"
-    android:layout_weight="1"/>
+    android:layout_height="match_parent">
 
-  <!-- RL + RS UI -->
-  <TextView
-    android:id="@+id/tvDifficulty"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="Difficulty: 1"/>
+  <!-- Vertical stack: Toolbar, NavHostFragment, RL/RS controls -->
+  <LinearLayout
+      android:orientation="vertical"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent">
 
-  <Button
-    android:id="@+id/btnSimulateRep"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="Simulate Rep"/>
+    <!-- Your existing toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/toolbar_background" />
 
-  <RatingBar
-    android:id="@+id/ratingBar"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:numStars="5"
-    android:stepSize="1"/>
+    <!-- Navigation host for your camera & other fragments -->
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        app:navGraph="@navigation/nav_graph"
+        app:defaultNavHost="true" />
 
-  <Button
-    android:id="@+id/btnRate"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="Rate Workout"/>
+    <!-- RL + RS UI panel -->
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
-  <TextView
-    android:id="@+id/tvRecs"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="Recommendations"/>
-</LinearLayout>
+      <TextView
+          android:id="@+id/tvDifficulty"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Difficulty: 1"
+          android:textAppearance="?attr/textAppearanceHeadline6" />
+
+      <Button
+          android:id="@+id/btnSimulateRep"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Simulate Rep"
+          android:layout_marginTop="8dp" />
+
+      <RatingBar
+          android:id="@+id/ratingBar"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:numStars="5"
+          android:stepSize="1"
+          android:layout_marginTop="12dp" />
+
+      <Button
+          android:id="@+id/btnRate"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Rate Workout"
+          android:layout_marginTop="8dp" />
+
+      <TextView
+          android:id="@+id/tvRecs"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Recommendations"
+          android:layout_marginTop="12dp" />
+
+    </LinearLayout>
+  </LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

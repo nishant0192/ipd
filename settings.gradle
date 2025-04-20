@@ -4,7 +4,15 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    plugins {
+        // declare versions here
+        id "com.android.application"       version "7.4.2"
+        id "org.jetbrains.kotlin.android"  version "1.9.0"
+        id "org.jetbrains.kotlin.kapt"     version "1.9.0"
+        id "de.undercouch.download"        version "4.1.2"
+    }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -12,5 +20,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
+
 rootProject.name = "Pose Landmarker"
-include ':app'
+include(":app")
