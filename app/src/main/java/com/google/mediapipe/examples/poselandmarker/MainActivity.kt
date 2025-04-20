@@ -6,7 +6,6 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.ui.setupWithNavController
 import com.google.mediapipe.examples.poselandmarker.databinding.ActivityMainBinding
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -21,11 +20,11 @@ class MainActivity : AppCompatActivity() {
     binding = ActivityMainBinding.inflate(layoutInflater)
     setContentView(binding.root)
 
-    // ─── Your existing Navigation setup ────────────────────────────────────
+    // If you ever need the NavController:
     val navHost = supportFragmentManager
       .findFragmentById(R.id.fragment_container) as NavHostFragment
-    binding.navigation?.setupWithNavController(navHost.navController)
-    // (If you don't have a BottomNavigationView, you can remove the above.)
+    // val navController = navHost.navController
+    // (Since app:defaultNavHost="true" is set, navController handles back for you.)
 
     // ─── Collect difficulty StateFlow ─────────────────────────────────────
     lifecycleScope.launch {
@@ -51,7 +50,7 @@ class MainActivity : AppCompatActivity() {
 
     // ─── Submit a rating ──────────────────────────────────────────────────
     binding.btnRate.setOnClickListener {
-      val workoutId = "workout-1"  // replace with real workout identifier
+      val workoutId = "workout-1"  // replace with real workout ID
       val rating    = binding.ratingBar.rating.toInt()
       viewModel.submitRating(workoutId, rating)
     }

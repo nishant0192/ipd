@@ -5,29 +5,29 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-  <!-- Vertical stack: Toolbar, NavHostFragment, RL/RS controls -->
   <LinearLayout
       android:orientation="vertical"
       android:layout_width="match_parent"
       android:layout_height="match_parent">
 
-    <!-- Your existing toolbar -->
+    <!-- Toolbar (unchanged) -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/toolbar_background" />
 
-    <!-- Navigation host for your camera & other fragments -->
+    <!-- THIS is now a NavHostFragment container -->
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/fragment_container"
+        android:name="androidx.navigation.fragment.NavHostFragment"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         app:navGraph="@navigation/nav_graph"
         app:defaultNavHost="true" />
 
-    <!-- RL + RS UI panel -->
+    <!-- RL+RS UI -->
     <LinearLayout
         android:orientation="vertical"
         android:padding="16dp"
