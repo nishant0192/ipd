@@ -95,6 +95,12 @@ class MainActivity : AppCompatActivity() {
                     drawerLayout.closeDrawers()
                     true
                 }
+                R.id.menu_workout_history -> {
+                    // Show workout history fragment
+                    showWorkoutHistoryFragment()
+                    drawerLayout.closeDrawers()
+                    true
+                }
                 R.id.menu_toggle_camera -> {
                     // Toggle front/back camera
                     val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragment_container) as NavHostFragment
@@ -270,6 +276,24 @@ class MainActivity : AppCompatActivity() {
             }
         
         builder.create().show()
+    }
+    
+    private fun showWorkoutHistoryFragment() {
+        // Create transaction
+        val transaction = supportFragmentManager.beginTransaction()
+        
+        // Create fragment instance
+        val fragment = WorkoutHistoryFragment()
+        
+        // Replace container with fragment and add to back stack
+        transaction.replace(R.id.fragment_container, fragment)
+        transaction.addToBackStack("workout_history")
+        
+        // Commit transaction
+        transaction.commit()
+        
+        // Update toolbar title
+        binding.toolbar.title = "Workout History"
     }
     
     override fun onDestroy() {

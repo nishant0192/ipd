@@ -202,9 +202,9 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Form Quality Card -->
+        <!-- Recommendations Card -->
         <androidx.cardview.widget.CardView
-            android:id="@+id/card_form_quality"
+            android:id="@+id/card_recommendations"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -221,33 +221,10 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Form Quality"
+                    android:text="Form Analysis"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="12dp" />
-
-                <!-- Form Quality Chart Placeholder -->
-                <com.github.mikephil.charting.charts.PieChart
-                    android:id="@+id/chart_form_quality"
-                    android:layout_width="match_parent"
-                    android:layout_height="200dp"
-                    android:layout_marginTop="8dp" />
-
-                <!-- Common Form Issues -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Common Form Issues"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginBottom="8dp" />
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recycler_form_issues"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:nestedScrollingEnabled="false" />
 
                 <TextView
                     android:id="@+id/text_no_issues"
@@ -256,76 +233,7 @@
                     android:text="No significant form issues detected. Great job!"
                     android:textColor="#4CAF50"
                     android:visibility="gone"
-                    android:gravity="center"
                     android:padding="12dp" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Rep-by-Rep Analysis Card -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/card_rep_analysis"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:layout_constraintTop_toBottomOf="@id/card_form_quality">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Rep-by-Rep Analysis"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="12dp" />
-
-                <!-- Progress Chart -->
-                <com.github.mikephil.charting.charts.LineChart
-                    android:id="@+id/chart_progress"
-                    android:layout_width="match_parent"
-                    android:layout_height="200dp"
-                    android:layout_marginTop="8dp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Tap on a rep in the chart to see detailed feedback"
-                    android:textSize="12sp"
-                    android:textColor="#757575"
-                    android:gravity="center"
-                    android:layout_marginTop="8dp" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Recommendation Card -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/card_recommendations"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:layout_constraintTop_toBottomOf="@id/card_rep_analysis">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Recommendations"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="12dp" />
 
                 <TextView
                     android:id="@+id/text_primary_recommendation"

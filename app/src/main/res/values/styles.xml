@@ -38,4 +38,29 @@
     <style name="AppThemeProgressStyle">
         <item name="colorAccent">@color/mp_color_primary_variant</item>
     </style>
+    
+    <!-- Full screen dialog style for workout details -->
+    <style name="FullScreenDialogStyle" parent="Theme.MaterialComponents.Light.Dialog">
+        <item name="android:windowNoTitle">true</item>
+        <item name="colorPrimary">@color/mp_color_primary</item>
+        <item name="colorPrimaryDark">@color/mp_color_primary_dark</item>
+        <item name="colorAccent">@color/mp_color_secondary</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:windowAnimationStyle">@style/DialogAnimation</item>
+    </style>
+    
+    <!-- Dialog animation for smooth transitions -->
+    <style name="DialogAnimation">
+        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    </style>
+    
+    <!-- Card style for workout history items -->
+    <style name="WorkoutHistoryCardStyle" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">8dp</item>
+        <item name="cardElevation">2dp</item>
+        <item name="contentPadding">16dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
 </resources>
