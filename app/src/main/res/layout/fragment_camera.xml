@@ -40,5 +40,16 @@
         android:contentDescription="Switch camera"
         app:srcCompat="@drawable/ic_switch_camera"
         app:tint="@android:color/white" />
+        
+    <!-- Workout Stats button -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabWorkoutStats"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="16dp"
+        android:contentDescription="Workout Statistics"
+        app:srcCompat="@drawable/ic_stats"
+        app:tint="@android:color/white" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

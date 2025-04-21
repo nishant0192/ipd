@@ -83,6 +83,9 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.6.1"
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.1"
 
+    // Chart library - MPAndroidChart
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+
     // MediaPipe Vision Tasks
     implementation 'com.google.mediapipe:tasks-vision:0.10.14'
 

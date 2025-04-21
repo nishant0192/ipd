@@ -9,8 +9,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.card.MaterialCardView
-import com.google.mediapipe.examples.poselandmarker.ExerciseType
 import com.google.mediapipe.examples.poselandmarker.R
 import com.google.mediapipe.examples.poselandmarker.history.WorkoutHistoryDatabase
 import com.google.mediapipe.examples.poselandmarker.history.WorkoutHistoryRepository
@@ -106,4 +104,68 @@ class WorkoutHistoryFragment : Fragment() {
             }
         }
     }
+}
+
+/**
+ * Adapter for WorkoutHistoryFragment's RecyclerView
+ */
+class WorkoutHistoryAdapter(
+    private val onWorkoutSelected: (String) -> Unit
+) : RecyclerView.Adapter<WorkoutHistoryAdapter.WorkoutViewHolder>() {
+
+    private var workoutList: List<WorkoutEntity> = emptyList()
+
+    fun submitList(workouts: List<WorkoutEntity>) {
+        this.workoutList = workouts
+        notifyDataSetChanged()
+    }
+
+    class WorkoutViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val exerciseNameTextView: TextView = itemView.findViewById(R.id.workout_exercise_name)
+        val dateTextView: TextView = itemView.findViewById(R.id.workout_date)
+        val repCountTextView: TextView = itemView.findViewById(R.id.workout_rep_count)
+        val durationTextView: TextView = itemView.findViewById(R.id.workout_duration)
+        val scoreTextView: TextView = itemView.findViewById(R.id.workout_score)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): WorkoutViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_workout_history, parent, false)
+        return WorkoutViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: WorkoutViewHolder, position: Int) {
+        val workout = workoutList[position]
+        
+        // Set exercise name
+        holder.exerciseNameTextView.text = when(workout.exerciseType) {
+            com.google.mediapipe.examples.poselandmarker.ExerciseType.BICEP -> "Bicep Curl"
+            com.google.mediapipe.examples.poselandmarker.ExerciseType.SQUAT -> "Squat"
+            com.google.mediapipe.examples.poselandmarker.ExerciseType.LATERAL_RAISE -> "Lateral Raise"
+            com.google.mediapipe.examples.poselandmarker.ExerciseType.LUNGES -> "Lunges"
+            com.google.mediapipe.examples.poselandmarker.ExerciseType.SHOULDER_PRESS -> "Shoulder Press"
+        }
+        
+        // Format and set date
+        val dateFormat = SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault())
+        holder.dateTextView.text = dateFormat.format(Date(workout.timestamp))
+        
+        // Set rep count
+        holder.repCountTextView.text = "${workout.totalReps} reps"
+        
+        // Format and set duration
+        val minutes = workout.duration / 60000
+        val seconds = (workout.duration % 60000) / 1000
+        holder.durationTextView.text = String.format("%02d:%02d", minutes, seconds)
+        
+        // Set score
+        holder.scoreTextView.text = "${workout.score}/100"
+        
+        // Set click listener
+        holder.itemView.setOnClickListener {
+            onWorkoutSelected(workout.id)
+        }
+    }
+
+    override fun getItemCount() = workoutList.size
 }

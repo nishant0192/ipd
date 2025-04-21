@@ -5,26 +5,16 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
-import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.charts.PieChart
-import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.Entry
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
-import com.github.mikephil.charting.data.PieData
-import com.github.mikephil.charting.data.PieDataSet
-import com.github.mikephil.charting.data.PieEntry
-import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.mediapipe.examples.poselandmarker.ExerciseType
 import com.google.mediapipe.examples.poselandmarker.R
 import com.google.mediapipe.examples.poselandmarker.feedback.EnhancedFormFeedback
-import com.google.mediapipe.examples.poselandmarker.history.WorkoutEntity
 import com.google.mediapipe.examples.poselandmarker.history.WorkoutHistoryDatabase
 import com.google.mediapipe.examples.poselandmarker.history.WorkoutHistoryRepository
 import com.google.mediapipe.examples.poselandmarker.history.WorkoutResult
@@ -51,8 +41,6 @@ class WorkoutDetailsDialog : DialogFragment() {
     private lateinit var totalRepsText: TextView
     private lateinit var perfectFormText: TextView
     private lateinit var scoreText: TextView
-    private lateinit var formQualityChart: PieChart
-    private lateinit var progressChart: LineChart
     private lateinit var primaryRecommendationText: TextView
     private lateinit var secondaryRecommendationText: TextView
     
@@ -89,18 +77,16 @@ class WorkoutDetailsDialog : DialogFragment() {
         totalRepsText = view.findViewById(R.id.text_total_reps)
         perfectFormText = view.findViewById(R.id.text_perfect_form)
         scoreText = view.findViewById(R.id.text_score)
-        formQualityChart = view.findViewById(R.id.chart_form_quality)
-        progressChart = view.findViewById(R.id.chart_progress)
         primaryRecommendationText = view.findViewById(R.id.text_primary_recommendation)
         secondaryRecommendationText = view.findViewById(R.id.text_secondary_recommendation)
         
         // Set up close button
-        view.findViewById<View>(R.id.btn_close).setOnClickListener {
+        view.findViewById<Button>(R.id.btn_close).setOnClickListener {
             dismiss()
         }
         
         // Set up share button
-        view.findViewById<View>(R.id.btn_share).setOnClickListener {
+        view.findViewById<Button>(R.id.btn_share).setOnClickListener {
             // Share workout results (would implement sharing functionality)
         }
         
@@ -133,7 +119,7 @@ class WorkoutDetailsDialog : DialogFragment() {
             }
             
             if (workout != null) {
-                // Process rep details to create a WorkoutResult with analysis
+                // Process rep details to create a simple workout result
                 val workoutResult = processWorkoutData(workout, repDetails)
                 
                 // Update UI with workout details
@@ -146,26 +132,21 @@ class WorkoutDetailsDialog : DialogFragment() {
     }
     
     /**
-     * Process workout data to create a comprehensive workout result with analysis
+     * Process workout data to create a workout result with analysis
      */
     private fun processWorkoutData(
-        workout: WorkoutEntity,
+        workout: com.google.mediapipe.examples.poselandmarker.history.WorkoutEntity,
         repDetails: List<com.google.mediapipe.examples.poselandmarker.history.RepDetailEntity>
     ): WorkoutResult {
-        // Convert rep details to form issues
+        // Create empty maps and lists for workout result
+        val formIssueFrequency = mutableMapOf<EnhancedFormFeedback.FormIssue, Int>()
+        val progressOverTime = mutableListOf<Pair<Int, Float>>()
+        val formQualityOverTime = mutableListOf<Pair<Int, EnhancedFormFeedback.FormRating>>()
+        
+        // Process rep details
         val gson = Gson()
         val typeToken = object : TypeToken<List<EnhancedFormFeedback.FormIssue>>() {}.type
         
-        // Create form issue frequency map
-        val formIssueFrequency = mutableMapOf<EnhancedFormFeedback.FormIssue, Int>()
-        
-        // Create progress over time data
-        val progressOverTime = mutableListOf<Pair<Int, Float>>()
-        
-        // Create form quality over time data
-        val formQualityOverTime = mutableListOf<Pair<Int, EnhancedFormFeedback.FormRating>>()
-        
-        // Process each rep detail
         repDetails.forEach { repDetail ->
             // Add angle to progress data
             progressOverTime.add(Pair(repDetail.repNumber, repDetail.angle))
@@ -229,124 +210,8 @@ class WorkoutDetailsDialog : DialogFragment() {
         perfectFormText.text = "${workoutResult.perfectFormPercentage}%"
         scoreText.text = workout.score.toString()
         
-        // Setup form quality chart
-        setupFormQualityChart(workoutResult)
-        
-        // Setup progress chart
-        setupProgressChart(workoutResult)
-        
         // Setup recommendations
         setupRecommendations(workoutResult)
-    }
-    
-    /**
-     * Set up form quality pie chart
-     */
-    private fun setupFormQualityChart(workoutResult: WorkoutResult) {
-        // Process form quality data from form ratings
-        val ratingsMap = workoutResult.formQualityOverTime.groupBy { it.second }
-            .mapValues { it.value.size }
-        
-        // Create pie entries
-        val entries = ArrayList<PieEntry>()
-        EnhancedFormFeedback.FormRating.values().forEach { rating ->
-            val count = ratingsMap[rating] ?: 0
-            if (count > 0) {
-                entries.add(PieEntry(count.toFloat(), rating.displayName))
-            }
-        }
-        
-        // If no entries, add a placeholder
-        if (entries.isEmpty()) {
-            entries.add(PieEntry(1f, "No Data"))
-        }
-        
-        // Create dataset with colors
-        val dataSet = PieDataSet(entries, "Form Quality")
-        val colors = ArrayList<Int>()
-        
-        // Add colors based on available ratings
-        EnhancedFormFeedback.FormRating.values().forEach { rating ->
-            if (ratingsMap[rating] != null && ratingsMap[rating]!! > 0) {
-                colors.add(getRatingColor(rating))
-            }
-        }
-        
-        // If no colors (only placeholder), add a default
-        if (colors.isEmpty()) {
-            colors.add(Color.GRAY)
-        }
-        
-        dataSet.colors = colors
-        
-        // Create and configure pie data
-        val data = PieData(dataSet)
-        data.setValueTextSize(14f)
-        data.setValueTextColor(Color.WHITE)
-        
-        // Configure chart appearance
-        formQualityChart.apply {
-            this.data = data
-            description.isEnabled = false
-            setDrawEntryLabels(false)
-            legend.textSize = 14f
-            setUsePercentValues(true)
-            setCenterText("Form\nQuality")
-            setCenterTextSize(16f)
-            setHoleRadius(40f)
-            setTransparentCircleRadius(45f)
-            invalidate()
-        }
-    }
-    
-    /**
-     * Set up progress line chart
-     */
-    private fun setupProgressChart(workoutResult: WorkoutResult) {
-        // Create entries for the line chart
-        val entries = ArrayList<Entry>()
-        
-        // Add data points from progress over time
-        workoutResult.progressOverTime.forEach { (repNumber, angle) ->
-            entries.add(Entry(repNumber.toFloat(), angle))
-        }
-        
-        // If no entries, add placeholder
-        if (entries.isEmpty()) {
-            entries.add(Entry(0f, 0f))
-        }
-        
-        // Create and configure dataset
-        val dataSet = LineDataSet(entries, "Rep Angles")
-        dataSet.apply {
-            color = ContextCompat.getColor(requireContext(), R.color.mp_color_primary)
-            lineWidth = 2f
-            setCircleColor(ContextCompat.getColor(requireContext(), R.color.mp_color_primary))
-            circleRadius = 4f
-            setDrawValues(false)
-        }
-        
-        // Create line data
-        val lineData = LineData(dataSet)
-        
-        // Configure chart
-        progressChart.apply {
-            data = lineData
-            description.isEnabled = false
-            legend.textSize = 14f
-            
-            // Configure X axis to show rep numbers
-            xAxis.position = XAxis.XAxisPosition.BOTTOM
-            xAxis.granularity = 1f
-            xAxis.labelCount = entries.size.coerceAtMost(10) // Limit labels for readability
-            
-            // Add some padding
-            extraBottomOffset = 10f
-            extraLeftOffset = 10f
-            extraRightOffset = 10f
-            
-            invalidate()
-        }
     }
     
     /**
@@ -391,24 +256,6 @@ class WorkoutDetailsDialog : DialogFragment() {
             ExerciseType.LATERAL_RAISE -> "Lateral Raise"
             ExerciseType.LUNGES -> "Lunges"
             ExerciseType.SHOULDER_PRESS -> "Shoulder Press"
-        }
-    }
-    
-    /**
-     * Get color for a form rating
-     */
-    private fun getRatingColor(rating: EnhancedFormFeedback.FormRating): Int {
-        return when (rating) {
-            EnhancedFormFeedback.FormRating.PERFECT -> 
-                ContextCompat.getColor(requireContext(), R.color.perfect_form)
-            EnhancedFormFeedback.FormRating.GOOD -> 
-                ContextCompat.getColor(requireContext(), R.color.good_form)
-            EnhancedFormFeedback.FormRating.FAIR -> 
-                ContextCompat.getColor(requireContext(), R.color.fair_form)
-            EnhancedFormFeedback.FormRating.NEEDS_WORK -> 
-                ContextCompat.getColor(requireContext(), R.color.poor_form)
-            EnhancedFormFeedback.FormRating.POOR -> 
-                ContextCompat.getColor(requireContext(), R.color.bad_form)
         }
     }
     
