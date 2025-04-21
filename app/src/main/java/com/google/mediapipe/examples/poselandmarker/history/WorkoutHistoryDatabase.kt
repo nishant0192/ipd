@@ -9,7 +9,7 @@ import androidx.room.TypeConverters
 /**
  * Room database for workout history
  */
-@Database(entities = [WorkoutEntity::class, RepDetailEntity::class], version = 1, exportSchema = false)
+@Database(entities = [WorkoutRecord::class, RepDetailEntity::class], version = 1, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class WorkoutHistoryDatabase : RoomDatabase() {
     abstract fun workoutHistoryDao(): WorkoutHistoryDao

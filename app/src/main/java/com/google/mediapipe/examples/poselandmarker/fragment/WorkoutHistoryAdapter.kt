@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.mediapipe.examples.poselandmarker.ExerciseType
 import com.google.mediapipe.examples.poselandmarker.R
-import com.google.mediapipe.examples.poselandmarker.history.WorkoutEntity
+import com.google.mediapipe.examples.poselandmarker.history.WorkoutResult
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -21,7 +21,7 @@ import java.util.Locale
  */
 class WorkoutHistoryAdapter(
     private val onWorkoutSelected: (String) -> Unit
-) : ListAdapter<WorkoutEntity, WorkoutHistoryAdapter.WorkoutViewHolder>(DIFF_CALLBACK) {
+) : ListAdapter<WorkoutRecord, WorkoutHistoryAdapter.WorkoutViewHolder>(DIFF_CALLBACK) {
 
     class WorkoutViewHolder(
         itemView: View,
@@ -37,7 +37,7 @@ class WorkoutHistoryAdapter(
         
         private val dateFormatter = SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault())
         
-        fun bind(workout: WorkoutEntity) {
+        fun bind(workout: WorkoutRecord) {
             // Set exercise icon and name
             exerciseIcon.setImageResource(getExerciseIcon(workout.exerciseType))
             exerciseName.text = getExerciseName(workout.exerciseType)
@@ -106,12 +106,12 @@ class WorkoutHistoryAdapter(
     }
     
     companion object {
-        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<WorkoutEntity>() {
-            override fun areItemsTheSame(oldItem: WorkoutEntity, newItem: WorkoutEntity): Boolean {
+        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<WorkoutRecord>() {
+            override fun areItemsTheSame(oldItem: WorkoutRecord, newItem: WorkoutRecord): Boolean {
                 return oldItem.id == newItem.id
             }
             
-            override fun areContentsTheSame(oldItem: WorkoutEntity, newItem: WorkoutEntity): Boolean {
+            override fun areContentsTheSame(oldItem: WorkoutRecord, newItem: WorkoutRecord): Boolean {
                 return oldItem == newItem
             }
         }

@@ -135,7 +135,7 @@ class WorkoutDetailsDialog : DialogFragment() {
      * Process workout data to create a workout result with analysis
      */
     private fun processWorkoutData(
-        workout: com.google.mediapipe.examples.poselandmarker.history.WorkoutEntity,
+        workout: com.google.mediapipe.examples.poselandmarker.history.WorkoutRecord,
         repDetails: List<com.google.mediapipe.examples.poselandmarker.history.RepDetailEntity>
     ): WorkoutResult {
         // Create empty maps and lists for workout result
@@ -169,7 +169,7 @@ class WorkoutDetailsDialog : DialogFragment() {
         
         // Create and return workout result
         return WorkoutResult(
-            workoutEntity = workout,
+            WorkoutRecord = workout,
             repDetails = repDetails,
             formIssueFrequency = formIssueFrequency,
             progressOverTime = progressOverTime,
@@ -181,7 +181,7 @@ class WorkoutDetailsDialog : DialogFragment() {
      * Update UI with workout details
      */
     private fun updateUI(workoutResult: WorkoutResult) {
-        val workout = workoutResult.workoutEntity
+        val workout = workoutResult.WorkoutRecord
         
         // Set exercise info
         exerciseTypeText.text = getExerciseTypeName(workout.exerciseType)
@@ -230,7 +230,7 @@ class WorkoutDetailsDialog : DialogFragment() {
         }
         
         // Set secondary recommendation based on exercise type
-        secondaryRecommendationText.text = when (workoutResult.workoutEntity.exerciseType) {
+        secondaryRecommendationText.text = when (workoutResult.WorkoutRecord.exerciseType) {
             ExerciseType.BICEP -> "Try adding more weight or increasing reps to challenge yourself."
             ExerciseType.SQUAT -> "Focus on depth and keeping your weight on your heels."
             ExerciseType.LATERAL_RAISE -> "Keep the movement controlled and avoid using momentum."

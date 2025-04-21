@@ -10,16 +10,16 @@ import androidx.room.Query
 @Dao
 interface WorkoutHistoryDao {
     @Insert
-    fun insertWorkout(workout: WorkoutEntity)
+    fun insertWorkout(workout: WorkoutRecord)
     
     @Insert
     fun insertRepDetail(repDetail: RepDetailEntity)
     
     @Query("SELECT * FROM workouts ORDER BY timestamp DESC")
-    fun getAllWorkouts(): List<WorkoutEntity>
+    fun getAllWorkouts(): List<WorkoutRecord>
     
     @Query("SELECT * FROM workouts WHERE id = :workoutId")
-    fun getWorkoutById(workoutId: String): WorkoutEntity?
+    fun getWorkoutById(workoutId: String): WorkoutRecord?
     
     @Query("SELECT * FROM rep_details WHERE workoutId = :workoutId ORDER BY repNumber ASC")
     fun getRepDetailsForWorkout(workoutId: String): List<RepDetailEntity>
@@ -37,7 +37,7 @@ interface WorkoutHistoryDao {
     fun getAverageWorkoutScore(): Float?
     
     @Query("SELECT * FROM workouts ORDER BY timestamp DESC LIMIT 1")
-    fun getMostRecentWorkout(): WorkoutEntity?
+    fun getMostRecentWorkout(): WorkoutRecord?
     
     @Query("DELETE FROM workouts WHERE id = :workoutId")
     fun deleteWorkout(workoutId: String)

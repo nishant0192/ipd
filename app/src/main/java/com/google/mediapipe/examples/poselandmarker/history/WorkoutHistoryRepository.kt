@@ -27,7 +27,7 @@ class WorkoutHistoryRepository(private val workoutHistoryDao: WorkoutHistoryDao)
     ): String = withContext(Dispatchers.IO) {
         // Create and save workout entity
         val workoutId = UUID.randomUUID().toString()
-        val workout = WorkoutEntity(
+        val workout = WorkoutRecord(
             id = workoutId,
             exerciseType = exerciseType,
             timestamp = System.currentTimeMillis(),
@@ -61,14 +61,14 @@ class WorkoutHistoryRepository(private val workoutHistoryDao: WorkoutHistoryDao)
     /**
      * Get all workout summaries
      */
-    suspend fun getAllWorkouts(): List<WorkoutEntity> = withContext(Dispatchers.IO) {
+    suspend fun getAllWorkouts(): List<WorkoutRecord> = withContext(Dispatchers.IO) {
         return@withContext workoutHistoryDao.getAllWorkouts()
     }
     
     /**
      * Get a specific workout with all rep details
      */
-    suspend fun getWorkoutWithDetails(workoutId: String): Pair<WorkoutEntity?, List<RepDetailEntity>> = 
+    suspend fun getWorkoutWithDetails(workoutId: String): Pair<WorkoutRecord?, List<RepDetailEntity>> = 
         withContext(Dispatchers.IO) {
             val workout = workoutHistoryDao.getWorkoutById(workoutId)
             val repDetails = workoutHistoryDao.getRepDetailsForWorkout(workoutId)

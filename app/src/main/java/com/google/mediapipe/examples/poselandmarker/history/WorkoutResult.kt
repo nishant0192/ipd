@@ -6,7 +6,7 @@ import com.google.mediapipe.examples.poselandmarker.feedback.EnhancedFormFeedbac
  * Detailed workout result to display in UI
  */
 data class WorkoutResult(
-    val workoutEntity: WorkoutEntity,
+    val WorkoutRecord: WorkoutRecord,
     val repDetails: List<RepDetailEntity>,
     val formIssueFrequency: Map<EnhancedFormFeedback.FormIssue, Int>,
     val progressOverTime: List<Pair<Int, Float>>, // Rep number to angle
@@ -22,8 +22,8 @@ data class WorkoutResult(
      * Percentage of perfect form reps
      */
     val perfectFormPercentage: Int
-        get() = if (workoutEntity.totalReps > 0) {
-            (workoutEntity.perfectFormReps * 100) / workoutEntity.totalReps
+        get() = if (WorkoutRecord.totalReps > 0) {
+            (WorkoutRecord.perfectFormReps * 100) / WorkoutRecord.totalReps
         } else 0
         
     /**
@@ -31,7 +31,7 @@ data class WorkoutResult(
      */
     val formattedDuration: String
         get() {
-            val seconds = workoutEntity.duration / 1000
+            val seconds = WorkoutRecord.duration / 1000
             val minutes = seconds / 60
             val remainingSeconds = seconds % 60
             return String.format("%02d:%02d", minutes, remainingSeconds)
@@ -42,17 +42,17 @@ data class WorkoutResult(
      */
     val grade: String
         get() = when {
-            workoutEntity.score >= 90 -> "A+"
-            workoutEntity.score >= 85 -> "A"
-            workoutEntity.score >= 80 -> "A-"
-            workoutEntity.score >= 75 -> "B+"
-            workoutEntity.score >= 70 -> "B"
-            workoutEntity.score >= 65 -> "B-"
-            workoutEntity.score >= 60 -> "C+"
-            workoutEntity.score >= 55 -> "C"
-            workoutEntity.score >= 50 -> "C-"
-            workoutEntity.score >= 45 -> "D+"
-            workoutEntity.score >= 40 -> "D"
+            WorkoutRecord.score >= 90 -> "A+"
+            WorkoutRecord.score >= 85 -> "A"
+            WorkoutRecord.score >= 80 -> "A-"
+            WorkoutRecord.score >= 75 -> "B+"
+            WorkoutRecord.score >= 70 -> "B"
+            WorkoutRecord.score >= 65 -> "B-"
+            WorkoutRecord.score >= 60 -> "C+"
+            WorkoutRecord.score >= 55 -> "C"
+            WorkoutRecord.score >= 50 -> "C-"
+            WorkoutRecord.score >= 45 -> "D+"
+            WorkoutRecord.score >= 40 -> "D"
             else -> "F"
         }
 }

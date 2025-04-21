@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.mediapipe.examples.poselandmarker.R
 import com.google.mediapipe.examples.poselandmarker.history.WorkoutHistoryDatabase
 import com.google.mediapipe.examples.poselandmarker.history.WorkoutHistoryRepository
-import com.google.mediapipe.examples.poselandmarker.history.WorkoutEntity
+import com.google.mediapipe.examples.poselandmarker.history.WorkoutRecord
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -113,9 +113,9 @@ class WorkoutHistoryAdapter(
     private val onWorkoutSelected: (String) -> Unit
 ) : RecyclerView.Adapter<WorkoutHistoryAdapter.WorkoutViewHolder>() {
 
-    private var workoutList: List<WorkoutEntity> = emptyList()
+    private var workoutList: List<WorkoutRecord> = emptyList()
 
-    fun submitList(workouts: List<WorkoutEntity>) {
+    fun submitList(workouts: List<WorkoutRecord>) {
         this.workoutList = workouts
         notifyDataSetChanged()
     }
