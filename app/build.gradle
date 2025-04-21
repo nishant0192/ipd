@@ -1,12 +1,7 @@
-/*
- * Copyright 2023 The TensorFlow Authors.
- * Licensed under the Apache License, Version 2.0 (the "License");
- */
-
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'org.jetbrains.kotlin.kapt'
+    id 'com.google.devtools.ksp'       // Kotlin Symbol Processing plugin
     id 'de.undercouch.download'
 }
 
@@ -33,7 +28,6 @@ android {
         }
     }
 
-    // ─── align Java & Kotlin to JVM 17 ────────────────────────────────────────
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -41,7 +35,6 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
-    // ────────────────────────────────────────────────────────────────────────
 
     buildFeatures {
         viewBinding true
@@ -72,18 +65,22 @@ dependencies {
     // WindowManager
     implementation 'androidx.window:window:1.1.0-alpha03'
 
-    // Client‑side RL/RS dependencies
+    // Room (via KSP) and coroutines
     implementation "androidx.room:room-runtime:2.5.1"
-    kapt           "androidx.room:room-compiler:2.5.1"
+    ksp           "androidx.room:room-compiler:2.5.1"   // use KSP instead of KAPT :contentReference[oaicite:3]{index=3}
     implementation "androidx.room:room-ktx:2.5.1"
-    implementation "androidx.datastore:datastore-preferences:1.0.0"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1"
-    implementation 'com.google.code.gson:gson:2.10.1'
+
+    // DataStore & Lifecycle
+    implementation "androidx.datastore:datastore-preferences:1.0.0"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.6.1"
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.1"
 
-    // Chart library - MPAndroidChart
+    // GSON
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    // Chart library
     implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
 
     // MediaPipe Vision Tasks
