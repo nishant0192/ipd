@@ -1,32 +1,19 @@
 package com.google.mediapipe.examples.poselandmarker
 
-import android.app.AlertDialog
-import android.content.Context
-import android.graphics.Color
-import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.view.View
-import android.view.animation.AnimationUtils
 import android.widget.TextView
 import androidx.cardview.widget.CardView
-import androidx.core.content.ContextCompat
-import com.google.mediapipe.examples.poselandmarker.feedback.EnhancedFormFeedback
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
- * Enhanced manager for exercise feedback, form evaluation, and rep counting
- * Provides real-time feedback, audio/haptic cues, and detailed form analysis
+ * Manages exercise feedback, form evaluation, and rep counting based on pose landmarks
  */
 class ExerciseFeedbackManager(
-    private val context: Context,
     private val overlayView: OverlayView,
     private val repCountTextView: TextView,
     private val formFeedbackTextView: TextView,
@@ -55,34 +42,16 @@ class ExerciseFeedbackManager(
     private var formErrors = mutableListOf<FormError>()
     private var consecutiveGoodReps = 0
     private var distance: Float = 0f
-    private var repStartTime: Long = 0
-    private var lastRepDuration: Long = 0
-    
-    // Enhanced form feedback
-    private val formFeedbackAnalyzer = EnhancedFormFeedback()
-    private val repFeedbacks = mutableListOf<EnhancedFormFeedback.RepFeedback>()
 
     private var lastAngle: Float = 0f
     private var minMovementThreshold = 15f // Minimum angle change required to start counting
-    
-    // Feedback handlers
+
+    // Handler for UI updates
     private val handler = Handler(Looper.getMainLooper())
     private var errorFlashRunnable: Runnable? = null
-    private var mediaPlayer: MediaPlayer? = null
-    private var vibrator: Vibrator? = null
     
-    // Workout session tracking
-    private var workoutActive = false
-    private var workoutStartTime: Long = 0
+    // Track if a rep was just completed
     private var repJustCompleted = false
-    private var totalWorkoutReps = 0
-    private var perfectFormReps = 0
-    
-    // Callback for rep completion events
-    var onRepCompleted: ((Float, Boolean, EnhancedFormFeedback.RepFeedback) -> Unit)? = null
-    
-    // Callback for workout completion
-    var onWorkoutCompleted: (() -> Unit)? = null
 
     // Exercise-specific parameters
     private val exerciseParams = mapOf(
@@ -135,67 +104,19 @@ class ExerciseFeedbackManager(
 
     init {
         updateExerciseSpecificTips()
-        initFeedbackSystem()
-    }
-    
-    /**
-     * Initialize feedback mechanisms (audio, haptic)
-     */
-    private fun initFeedbackSystem() {
-        vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
-    /**
-     * Set workout active state
-     */
-    fun setWorkoutActive(active: Boolean) {
-        // If starting a new workout
-        if (active && !workoutActive) {
-            workoutStartTime = System.currentTimeMillis()
-            resetCounters()
-            repFeedbacks.clear()
-            totalWorkoutReps = 0
-            perfectFormReps = 0
-        } 
-        // If ending a workout
-        else if (!active && workoutActive) {
-            // If we've completed at least one rep, trigger workout completed callback
-            if (totalWorkoutReps > 0) {
-                onWorkoutCompleted?.invoke()
-            }
-        }
-        
-        workoutActive = active
-    }
-    
-    /**
-     * Check if workout is currently active
-     */
-    fun isWorkoutActive(): Boolean = workoutActive
-
-    /**
-     * Reset all counters and states
-     */
     fun resetCounters() {
         repCount = 0
         repStage = RepStage.WAITING
         consecutiveGoodReps = 0
         formErrors.clear()
-        repJustCompleted = false
         updateUI()
     }
 
-    /**
-     * Update exercise-specific tips based on the current exercise
-     */
     private fun updateExerciseSpecificTips() {
         val params = exerciseParams[exerciseType] ?: return
         formTipTextView.text = params.primaryTip
-        
-        // Apply exercise-specific color to the form card
-        cardFormFeedback.setCardBackgroundColor(
-            ContextCompat.getColor(context, R.color.overlay_background)
-        )
     }
 
     /**
@@ -223,9 +144,6 @@ class ExerciseFeedbackManager(
         updateUI()
     }
 
-    /**
-     * Process bicep curl exercise landmarks
-     */
     private fun processBicepCurl(result: PoseLandmarkerResult) {
         val landmarks = result.landmarks()[0]
         if (landmarks.size <= 16) return
@@ -255,22 +173,8 @@ class ExerciseFeedbackManager(
                 formErrors.add(FormError.ELBOW_AWAY_FROM_BODY)
             }
             
-            // Error: Shoulder elevation
-            val leftShoulderY = LandmarkWrapper(landmarks[11]).y
-            val rightShoulderY = LandmarkWrapper(rightShoulder).y
-            val neckY = min(leftShoulderY, rightShoulderY) - 0.05f
-            if (rightShoulderY < neckY) {
-                formErrors.add(FormError.SHOULDER_RAISED)
-            }
-            
-            // Error: Back arching
-            if (landmarks.size > 24) {
-                val hipX = LandmarkWrapper(rightHip).x
-                val shoulderX = LandmarkWrapper(rightShoulder).x
-                if (shoulderX < hipX - 0.05f) {
-                    formErrors.add(FormError.BACK_ARCHING)
-                }
-            }
+            // Error: Wrist rotation (pronation/supination issues)
+            // For this we'd need wrist rotation data which is complex with just landmarks
             
             // Process rep counting
             processRep(dominantAngle)
@@ -294,31 +198,11 @@ class ExerciseFeedbackManager(
                 formErrors.add(FormError.ELBOW_AWAY_FROM_BODY)
             }
             
-            // Error: Shoulder elevation
-            val leftShoulderY = LandmarkWrapper(leftShoulder).y
-            val rightShoulderY = if (rightShoulderVisible) LandmarkWrapper(landmarks[12]).y else 0f
-            val neckY = min(leftShoulderY, if (rightShoulderVisible) rightShoulderY else leftShoulderY) - 0.05f
-            if (leftShoulderY < neckY) {
-                formErrors.add(FormError.SHOULDER_RAISED)
-            }
-            
-            // Error: Back arching
-            if (landmarks.size > 23) {
-                val hipX = LandmarkWrapper(leftHip).x
-                val shoulderX = LandmarkWrapper(leftShoulder).x
-                if (shoulderX > hipX + 0.05f) {
-                    formErrors.add(FormError.BACK_ARCHING)
-                }
-            }
-            
             // Process rep counting
             processRep(dominantAngle)
         }
     }
 
-    /**
-     * Process squat exercise landmarks
-     */
     private fun processSquat(result: PoseLandmarkerResult) {
         val landmarks = result.landmarks()[0]
         if (landmarks.size <= 28) return
@@ -368,17 +252,6 @@ class ExerciseFeedbackManager(
             }
         }
         
-        // Error: Knees caving inward
-        if (isLandmarkConfident(leftKnee) && isLandmarkConfident(leftAnkle) && 
-            isLandmarkConfident(leftHip)) {
-            val hipToAnkleVector = getVector(leftHip, leftAnkle)
-            val hipToKneeVector = getVector(leftHip, leftKnee)
-            val crossProduct = crossProductZ(hipToAnkleVector, hipToKneeVector)
-            if (crossProduct < -0.05f) {
-                formErrors.add(FormError.KNEES_INWARD)
-            }
-        }
-        
         // Error: Back not straight (check alignment of shoulders-hip-knees)
         if (isLandmarkConfident(leftHip) && isLandmarkConfident(leftKnee) && 
             isLandmarkConfident(landmarks[11])) { // left shoulder
@@ -392,9 +265,6 @@ class ExerciseFeedbackManager(
         processRep(kneeAngle)
     }
 
-    /**
-     * Process lateral raise exercise landmarks
-     */
     private fun processLateralRaise(result: PoseLandmarkerResult) {
         val landmarks = result.landmarks()[0]
         if (landmarks.size <= 24) return
@@ -443,21 +313,10 @@ class ExerciseFeedbackManager(
             }
         }
         
-        // Error: Shoulder shrugging
-        if (isLandmarkConfident(leftShoulder) && isLandmarkConfident(leftHip)) {
-            val shoulderHipDistance = calculateDistance(leftShoulder, leftHip)
-            if (shoulderHipDistance < 0.2f) { // Threshold for detecting shrugging
-                formErrors.add(FormError.SHOULDER_SHRUGGING)
-            }
-        }
-        
         // Process rep counting
         processRep(armAngle)
     }
 
-    /**
-     * Process lunges exercise landmarks
-     */
     private fun processLunges(result: PoseLandmarkerResult) {
         val landmarks = result.landmarks()[0]
         if (landmarks.size <= 28) return
@@ -512,32 +371,18 @@ class ExerciseFeedbackManager(
             }
         }
         
-        // Error: Uneven weight distribution (check hip tilt)
-        if (isLandmarkConfident(landmarks[23]) && isLandmarkConfident(landmarks[24])) {
-            val leftHipY = LandmarkWrapper(landmarks[23]).y
-            val rightHipY = LandmarkWrapper(landmarks[24]).y
-            if (abs(leftHipY - rightHipY) > 0.05f) {
-                formErrors.add(FormError.UNEVEN_WEIGHT)
-            }
-        }
-        
         // Process rep counting
         processRep(kneeAngle)
     }
 
-    /**
-     * Process shoulder press exercise landmarks
-     */
     private fun processShoulderPress(result: PoseLandmarkerResult) {
         val landmarks = result.landmarks()[0]
         if (landmarks.size <= 16) return
 
         // Calculate vertical angles for both arms
         val leftShoulderLandmark = landmarks[11]  // Renamed to avoid conflict
-        val leftElbowLandmark = landmarks[13]
         val leftWristLandmark = landmarks[15]     // Renamed to avoid conflict
         val rightShoulderLandmark = landmarks[12] // Renamed to avoid conflict 
-        val rightElbowLandmark = landmarks[14]
         val rightWristLandmark = landmarks[16]    // Renamed to avoid conflict
         
         // Calculate angle with vertical
@@ -586,29 +431,11 @@ class ExerciseFeedbackManager(
             }
         }
         
-        // Error: Elbows splaying outward
-        if (isLandmarkConfident(leftShoulderLandmark) && isLandmarkConfident(leftElbowLandmark) && 
-            isLandmarkConfident(leftWristLandmark)) {
-            val shoulder = LandmarkWrapper(leftShoulderLandmark)
-            val elbow = LandmarkWrapper(leftElbowLandmark)
-            if (elbow.x < shoulder.x - 0.08f) {
-                formErrors.add(FormError.ELBOWS_SPLAYING)
-            }
-        }
-        
-        // Error: Incomplete extension
-        if ((leftPressAngle != null && leftPressAngle > 20f) || 
-            (rightPressAngle != null && rightPressAngle > 20f)) {
-            formErrors.add(FormError.INCOMPLETE_EXTENSION)
-        }
-        
         // Process rep counting - use the pressAngle that we calculated above
         processRep(90f - pressAngle) // Convert to make the logic consistent with other exercises
     }
 
-    /**
-     * Process rep counting with enhanced feedback
-     */
+    // Process rep counting
     private fun processRep(angle: Float) {
         // Get parameters for current exercise type
         val params = exerciseParams[exerciseType] ?: return
@@ -626,23 +453,13 @@ class ExerciseFeedbackManager(
                 RepStage.WAITING -> {
                     if (angle <= params.repStartThreshold) {
                         repStage = RepStage.DOWN
-                        repStartTime = System.currentTimeMillis()
                         lastGoodFormTimestamp = System.currentTimeMillis()
-                        
-                        // Provide audio feedback for starting a rep
-                        if (formErrors.isEmpty()) {
-                            playFeedback(FeedbackType.REP_START)
-                        }
                     }
                 }
                 RepStage.DOWN -> {
                     if (angle >= params.repCompletionThreshold) {
                         repCount++
-                        totalWorkoutReps++
                         repStage = RepStage.UP
-                        
-                        // Calculate rep duration
-                        lastRepDuration = System.currentTimeMillis() - repStartTime
                         
                         // Mark rep as just completed
                         repJustCompleted = true
@@ -650,34 +467,15 @@ class ExerciseFeedbackManager(
                         // Check if this was a good rep (form errors)
                         if (formErrors.isEmpty()) {
                             consecutiveGoodReps++
-                            perfectFormReps++
-                            playFeedback(FeedbackType.GOOD_REP)
                         } else {
                             consecutiveGoodReps = 0
                             showErrorFlash()
-                            playFeedback(FeedbackType.BAD_REP)
                         }
-                        
-                        // Create detailed rep feedback
-                        val errorStrings = formErrors.map { it.toString().lowercase() }
-                        val repFeedback = formFeedbackAnalyzer.evaluateForm(
-                            exerciseType,
-                            angle,
-                            errorStrings,
-                            lastRepDuration
-                        )
-                        
-                        // Store feedback for analysis
-                        repFeedbacks.add(repFeedback)
-                        
-                        // Trigger rep completed callback
-                        onRepCompleted?.invoke(angle, formErrors.isNotEmpty(), repFeedback)
                     }
                 }
                 RepStage.UP -> {
                     if (angle <= params.repStartThreshold) {
                         repStage = RepStage.DOWN
-                        repStartTime = System.currentTimeMillis()
                         lastGoodFormTimestamp = System.currentTimeMillis()
                     }
                 }
@@ -689,83 +487,15 @@ class ExerciseFeedbackManager(
         // Cancel any previous flash
         errorFlashRunnable?.let { handler.removeCallbacks(it) }
         
-        // Show error flash with animation
+        // Show error flash
         errorFlashView.visibility = View.VISIBLE
-        errorFlashView.alpha = 0.7f
-        val fadeOut = AnimationUtils.loadAnimation(context, android.R.anim.fade_out)
-        fadeOut.duration = 500
-        errorFlashView.startAnimation(fadeOut)
         
         // Hide after delay
         errorFlashRunnable = Runnable {
             errorFlashView.visibility = View.GONE
             errorFlashRunnable = null
         }
-        handler.postDelayed(errorFlashRunnable!!, 500)
-    }
-    
-    /**
-     * Play appropriate feedback (sound, haptic) based on event type
-     */
-    private fun playFeedback(type: FeedbackType) {
-        when (type) {
-            FeedbackType.GOOD_REP -> {
-                // Play success sound
-                playSound(R.raw.success)
-                // Light vibration for good rep
-                vibrator?.let {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        it.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
-                    } else {
-                        @Suppress("DEPRECATION")
-                        it.vibrate(100)
-                    }
-                }
-            }
-            FeedbackType.BAD_REP -> {
-                // Play error sound
-                playSound(R.raw.error)
-                // Stronger vibration for bad form
-                vibrator?.let {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        it.vibrate(VibrationEffect.createOneShot(250, VibrationEffect.DEFAULT_AMPLITUDE))
-                    } else {
-                        @Suppress("DEPRECATION")
-                        it.vibrate(250)
-                    }
-                }
-            }
-            FeedbackType.REP_START -> {
-                // Play subtle click sound
-                playSound(R.raw.click)
-                // Very slight vibration
-                vibrator?.let {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        it.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-                    } else {
-                        @Suppress("DEPRECATION")
-                        it.vibrate(50)
-                    }
-                }
-            }
-        }
-    }
-    
-    /**
-     * Play a sound resource
-     */
-    private fun playSound(soundResId: Int) {
-        try {
-            // Release any previous player
-            mediaPlayer?.release()
-            
-            // Create and play new sound
-            mediaPlayer = MediaPlayer.create(context, soundResId)
-            mediaPlayer?.setOnCompletionListener { it.release() }
-            mediaPlayer?.start()
-        } catch (e: Exception) {
-            // Fail silently if sound can't be played
-        }
+        handler.postDelayed(errorFlashRunnable!!, 300)
     }
 
     private fun updateUI() {
@@ -786,38 +516,16 @@ class ExerciseFeedbackManager(
         }
         repStageTextView.text = stageText
         
-        // Update form feedback with animation for changes
+        // Update form feedback
         if (formErrors.isEmpty()) {
-            // Get color from resources
-            val goodColor = ContextCompat.getColor(context, R.color.perfect_form)
-            
             if (consecutiveGoodReps >= 3) {
-                if (formFeedbackTextView.text != "Perfect Form!") {
-                    formFeedbackTextView.startAnimation(
-                        AnimationUtils.loadAnimation(context, android.R.anim.fade_in)
-                    )
-                }
                 formFeedbackTextView.text = "Perfect Form!"
-                formFeedbackTextView.setTextColor(goodColor)
-                
-                // Add a congratulatory message after 5+ perfect reps
-                if (consecutiveGoodReps >= 5) {
-                    formTipTextView.text = "Excellent work! Keep it up!"
-                } else {
-                    // Use exercise-specific tips
-                    updateExerciseSpecificTips()
-                }
+                formFeedbackTextView.setTextColor(0xFF4CAF50.toInt()) // Green
             } else {
                 formFeedbackTextView.text = "Good Form"
-                formFeedbackTextView.setTextColor(goodColor)
+                formFeedbackTextView.setTextColor(0xFF4CAF50.toInt()) // Green
             }
-            
-            // Ensure form feedback card is visible with good color
-            cardFormFeedback.setCardBackgroundColor(ContextCompat.getColor(context, R.color.overlay_background))
         } else {
-            // Format and display error message
-            val errorColor = ContextCompat.getColor(context, R.color.bad_form)
-            
             val errorText = when (formErrors.first()) {
                 FormError.ELBOW_AWAY_FROM_BODY -> "Keep elbows close to body"
                 FormError.KNEES_OVER_TOES -> "Knees going past toes"
@@ -825,64 +533,9 @@ class ExerciseFeedbackManager(
                 FormError.ASYMMETRIC_MOVEMENT -> "Keep movement even"
                 FormError.ELBOWS_TOO_BENT -> "Straighten elbows slightly"
                 FormError.BACK_ARCHING -> "Avoid arching your back"
-                FormError.SHOULDER_RAISED -> "Keep shoulders down"
-                FormError.SHOULDER_SHRUGGING -> "Relax your shoulders"
-                FormError.KNEES_INWARD -> "Keep knees aligned with toes"
-                FormError.UNEVEN_WEIGHT -> "Even weight distribution"
-                FormError.ELBOWS_SPLAYING -> "Keep elbows forward"
-                FormError.INCOMPLETE_EXTENSION -> "Fully extend arms"
-                FormError.FORWARD_HEAD -> "Keep neutral head position"
             }
-            
-            // Only animate if text is changing
-            if (formFeedbackTextView.text != errorText) {
-                formFeedbackTextView.startAnimation(
-                    AnimationUtils.loadAnimation(context, android.R.anim.fade_in)
-                )
-            }
-            
             formFeedbackTextView.text = errorText
-            formFeedbackTextView.setTextColor(errorColor)
-            
-            // Add detailed tip
-            formTipTextView.text = getDetailedTipForError(formErrors.first())
-            
-            // Highlight form feedback card
-            cardFormFeedback.setCardBackgroundColor(ContextCompat.getColor(context, R.color.overlay_background))
-        }
-    }
-
-    /**
-     * Get detailed tip for specific form error
-     */
-    private fun getDetailedTipForError(error: FormError): String {
-        return when (error) {
-            FormError.ELBOW_AWAY_FROM_BODY -> 
-                "Keep your elbows pinned to your sides throughout the movement."
-            FormError.KNEES_OVER_TOES -> 
-                "Push your hips back more and ensure knees stay behind toes."
-            FormError.BACK_NOT_STRAIGHT -> 
-                "Engage your core and maintain a neutral spine position."
-            FormError.ASYMMETRIC_MOVEMENT -> 
-                "Focus on moving both arms at the same height and pace."
-            FormError.ELBOWS_TOO_BENT -> 
-                "Maintain a slight bend in elbows without overflexing."
-            FormError.BACK_ARCHING -> 
-                "Brace your core and tuck your pelvis slightly to avoid back arch."
-            FormError.SHOULDER_RAISED -> 
-                "Pull your shoulders down and back, away from your ears."
-            FormError.SHOULDER_SHRUGGING -> 
-                "Keep your shoulders relaxed and away from your ears."
-            FormError.KNEES_INWARD -> 
-                "Push knees outward in line with your toes during the movement."
-            FormError.UNEVEN_WEIGHT -> 
-                "Distribute weight evenly between both legs to maintain balance."
-            FormError.ELBOWS_SPLAYING -> 
-                "Keep elbows pointing forward rather than out to the sides."
-            FormError.INCOMPLETE_EXTENSION -> 
-                "Fully extend through the movement for complete muscle activation."
-            FormError.FORWARD_HEAD -> 
-                "Keep your head in a neutral position aligned with your spine."
+            formFeedbackTextView.setTextColor(0xFFFF5722.toInt()) // Orange
         }
     }
 
@@ -900,42 +553,6 @@ class ExerciseFeedbackManager(
      * Returns the current form errors
      */
     fun getFormErrors(): List<FormError> = formErrors.toList()
-    
-    /**
-     * Returns workout statistics
-     */
-    fun getWorkoutStats(): WorkoutStats {
-        return WorkoutStats(
-            totalReps = totalWorkoutReps,
-            perfectFormReps = perfectFormReps,
-            workoutDuration = if (workoutActive) 
-                System.currentTimeMillis() - workoutStartTime else 0,
-            repFeedbacks = repFeedbacks.toList()
-        )
-    }
-    
-    /**
-     * Display a workout completion dialog
-     */
-    fun showWorkoutCompletionDialog() {
-        if (totalWorkoutReps <= 0) return
-        
-        val score = formFeedbackAnalyzer.calculateWorkoutScore(repFeedbacks)
-        val perfectPercent = if (totalWorkoutReps > 0) 
-            (perfectFormReps * 100) / totalWorkoutReps else 0
-            
-        AlertDialog.Builder(context)
-            .setTitle("Workout Complete!")
-            .setMessage("You completed $totalWorkoutReps reps with $perfectPercent% perfect form!")
-            .setPositiveButton("View Analysis") { _, _ ->
-                onWorkoutCompleted?.invoke()
-            }
-            .setNegativeButton("Continue") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .setCancelable(true)
-            .show()
-    }
 
     private fun isLandmarkConfident(landmark: Any): Boolean {
         // This is a simplistic check - in a real app you might check visibility score
@@ -964,27 +581,6 @@ class ExerciseFeedbackManager(
         var angle = abs(radians * 180f / kotlin.math.PI.toFloat())
         if (angle > 180f) angle = 360f - angle
         return angle
-    }
-    
-    // Calculate distance between two landmarks
-    private fun calculateDistance(a: Any, b: Any): Float {
-        val A = LandmarkWrapper(a)
-        val B = LandmarkWrapper(b)
-        val dx = B.x - A.x
-        val dy = B.y - A.y
-        return sqrt(dx * dx + dy * dy)
-    }
-    
-    // Get vector between two landmarks (a->b)
-    private fun getVector(a: Any, b: Any): Pair<Float, Float> {
-        val A = LandmarkWrapper(a)
-        val B = LandmarkWrapper(b)
-        return Pair(B.x - A.x, B.y - A.y)
-    }
-    
-    // Calculate Z component of cross product (for 2D vectors)
-    private fun crossProductZ(v1: Pair<Float, Float>, v2: Pair<Float, Float>): Float {
-        return v1.first * v2.second - v1.second * v2.first
     }
 
     // Wrapper class to extract x, y coordinates
@@ -1021,14 +617,7 @@ class ExerciseFeedbackManager(
         BACK_NOT_STRAIGHT,
         ASYMMETRIC_MOVEMENT,
         ELBOWS_TOO_BENT,
-        BACK_ARCHING,
-        SHOULDER_RAISED,
-        SHOULDER_SHRUGGING,
-        KNEES_INWARD,
-        UNEVEN_WEIGHT,
-        ELBOWS_SPLAYING,
-        INCOMPLETE_EXTENSION,
-        FORWARD_HEAD
+        BACK_ARCHING
     }
 
     /**
@@ -1039,23 +628,4 @@ class ExerciseFeedbackManager(
         DOWN,    // Eccentric phase (going down)
         UP       // Concentric phase (going up/complete)
     }
-    
-    /**
-     * Enum representing types of feedback to provide
-     */
-    enum class FeedbackType {
-        GOOD_REP,
-        BAD_REP,
-        REP_START
-    }
-    
-    /**
-     * Data class for workout statistics
-     */
-    data class WorkoutStats(
-        val totalReps: Int,
-        val perfectFormReps: Int,
-        val workoutDuration: Long, // milliseconds
-        val repFeedbacks: List<EnhancedFormFeedback.RepFeedback>
-    )
 }
